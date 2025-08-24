@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../loginscreen.dart';
 import 'nurse_add_case.dart';
 
 class NurseListCaseScreen extends StatefulWidget {
@@ -118,9 +119,55 @@ class _NurseListCaseScreenState extends State<NurseListCaseScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text("บันทึกเคสผู้ป่วย"),
+        automaticallyImplyLeading: false,
         bottom: TabBar(
           controller: _tabController,
           tabs: const [Tab(text: 'เคสทั้งหมด'), Tab(text: 'เคสของฉัน')],
+        ),
+      ),
+      endDrawer: Container(
+        width: MediaQuery.of(context).size.width * 0.67, // 2/3 หน้าจอ
+        child: Drawer(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              // แทนที่จะใช้ DrawerHeader ลองใช้ Container + Padding
+              Container(
+                color: Colors.white,
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 175,
+                      height: 175,
+                      decoration: BoxDecoration(
+                        color: Colors.blue,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.person, size: 80, color: Colors.white),
+                    ),
+                    SizedBox(height: 20),
+                    ListTile(
+                      leading: Icon(Icons.person),
+                      title: Text('ชื่อผู้ใช้: พยาบาล'),
+                    ),
+                    ListTile(
+                      leading: Icon(Icons.logout),
+                      title: Text('ออกจากระบบ'),
+                      onTap: () {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => LoginScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
       body: Column(

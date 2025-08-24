@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../loginscreen.dart';
+import 'porter_case_detail.dart';
 
 class PorterCaseListScreen extends StatefulWidget {
   const PorterCaseListScreen({super.key});
@@ -167,7 +169,55 @@ class _PorterCaseListScreeState extends State<PorterCaseListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('รายการเคส')),
+      appBar: AppBar(
+        title: Text('รายการเคส'),
+        automaticallyImplyLeading: false,
+      ),
+      endDrawer: Container(
+        width: MediaQuery.of(context).size.width * 0.67, // 2/3 หน้าจอ
+        child: Drawer(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              // แทนที่จะใช้ DrawerHeader ลองใช้ Container + Padding
+              Container(
+                color: Colors.white,
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 175,
+                      height: 175,
+                      decoration: BoxDecoration(
+                        color: Colors.blue,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.person, size: 80, color: Colors.white),
+                    ),
+                    SizedBox(height: 20),
+                    ListTile(
+                      leading: Icon(Icons.person),
+                      title: Text('ชื่อผู้ใช้: พนักงานเปลคนไข้'),
+                    ),
+                    ListTile(
+                      leading: Icon(Icons.logout),
+                      title: Text('ออกจากระบบ'),
+                      onTap: () {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => LoginScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
       body: Column(
         children: [
           SizedBox(height: 12),
@@ -240,7 +290,7 @@ class _PorterCaseListScreeState extends State<PorterCaseListScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color:
                         isWaiting
@@ -306,7 +356,15 @@ class _PorterCaseListScreeState extends State<PorterCaseListScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 InkWell(
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PorterCaseDetailScreen(),
+                      ),
+                    );
+                    print('ดูรายละเอียด ${item['id']}');
+                  },
                   child: Text(
                     'ดูรายละเอียด',
                     style: TextStyle(color: Colors.blue),

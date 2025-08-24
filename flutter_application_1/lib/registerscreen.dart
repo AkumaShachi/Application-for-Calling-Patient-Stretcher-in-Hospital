@@ -76,6 +76,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     Text('เจ้าหน้าที่แปล'),
                   ],
                 ),
+                SizedBox(height: 16),
+                // รหัสเจ้าหน้าที่/พยาบาล
+                _buildTextField('รหัสเจ้าหน้าที่/พยาบาล'),
 
                 // ชื่อผู้ใช้
                 _buildTextField('ชื่อผู้ใช้'),
