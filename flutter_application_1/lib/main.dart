@@ -16,5 +16,6 @@ class MyApp extends StatelessWidget {
       home: LoginScreen(),
       debugShowCheckedModeBanner: false,
     );
+    //add functionality
   }
 }
