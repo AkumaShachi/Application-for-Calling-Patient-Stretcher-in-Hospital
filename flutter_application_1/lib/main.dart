@@ -16,6 +16,5 @@ class MyApp extends StatelessWidget {
       home: LoginScreen(),
       debugShowCheckedModeBanner: false,
     );
-    //asd
   }
 }
