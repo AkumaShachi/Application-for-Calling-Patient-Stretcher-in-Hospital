@@ -21,10 +21,10 @@ class _NurseExCaseScreenState extends State<NurseExCaseScreen> {
             Navigator.pop(context);
           },
           child: const Text(
-            'ยกเลิก',
+            'แก้ไข',
             style: TextStyle(color: Colors.blue),
-            overflow: TextOverflow.visible, // ไม่ตัดคำ
-            softWrap: false, // ไม่ขึ้นบรรทัดใหม่
+            overflow: TextOverflow.visible,
+            softWrap: false,
           ),
         ),
         actions: [
@@ -33,10 +33,10 @@ class _NurseExCaseScreenState extends State<NurseExCaseScreen> {
               // save logic here
             },
             child: const Text(
-              'บันทึก',
+              'ยืนยัน',
               style: TextStyle(color: Colors.blue),
-              overflow: TextOverflow.visible, // ไม่ตัดคำ
-              softWrap: false, // ไม่ขึ้นบรรทัดใหม่
+              overflow: TextOverflow.visible,
+              softWrap: false,
             ),
           ),
         ],
@@ -45,67 +45,59 @@ class _NurseExCaseScreenState extends State<NurseExCaseScreen> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // 🔵 Mic button
-            Column(
-              children: [
-                CircleAvatar(
-                  radius: 36,
-                  backgroundColor: Colors.blue[50],
-                  child: IconButton(
-                    icon: const Icon(Icons.mic, size: 32, color: Colors.blue),
-                    onPressed: () {
-                      // ใส่ logic สำหรับเริ่มพูดตรงนี้
-                    },
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text('แตะเพื่อพูด', style: TextStyle(fontSize: 16)),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            // 🗒️ ข้อความที่พูด
+            // ข้อมูลผู้ใช้และเคส
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Text(
-                'ข้อความ:\nหมายเลขผู้ป่วย GE174 ประเภทผู้ป่วยใน จุดรับคัด C ชั้น 4 ส่งห้องเอกซเรย์ ใช้เปลนอน อุปกรณ์เสริมออกซิเจน',
-                style: TextStyle(fontSize: 14),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // ✅ ข้อมูลที่ต้องระบุ
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.blue[50],
+                border: Border.all(color: Colors.black26),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.info_outline, color: Colors.blue),
-                      SizedBox(width: 8),
-                      Text(
-                        'ข้อมูลที่ต้องระบุ:',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                  // Header
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(12),
+                        topRight: Radius.circular(12),
                       ),
-                    ],
+                    ),
+                    child: Row(
+                      children: const [
+                        Icon(Icons.medical_services, color: Colors.blue),
+                        SizedBox(width: 8),
+                        Text(
+                          'พยาบาล สมศรี',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 12),
-                  _checkItem(Icons.badge, 'หมายเลขผู้ป่วย'),
-                  _checkItem(Icons.person, 'ประเภทผู้ป่วย'),
-                  _checkItem(Icons.location_on, 'จุดรับ-ส่ง'),
-                  _checkItem(Icons.bed, 'ประเภทเปล'),
-                  _checkItem(Icons.list, 'อุปกรณ์เสริม'),
+                  const Divider(height: 1, color: Colors.black26),
+                  // ข้อมูลเคส
+                  Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _caseItem(Icons.badge, 'หมายเลขผู้ป่วย : GE174'),
+                        _caseItem(Icons.person, 'ประเภทผู้ป่วย : ผู้ป่วยใน'),
+                        _caseItem(
+                          Icons.location_on,
+                          'จุดรับ-ส่ง : Ward 4C - ER',
+                        ),
+                        _caseItem(Icons.bed, 'ประเภทเปล : เปลนอน'),
+                        _caseItem(
+                          Icons.list,
+                          'อุปกรณ์เสริม : ออกซิเจน, เครื่องวัดความดัน',
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -115,17 +107,15 @@ class _NurseExCaseScreenState extends State<NurseExCaseScreen> {
     );
   }
 
-  // ✅ Helper สำหรับรายการเช็ค
-  Widget _checkItem(IconData icon, String label) {
+  // Helper สำหรับแสดงข้อมูลเคสแต่ละบรรทัด
+  Widget _caseItem(IconData icon, String text) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Icon(icon, color: Colors.blue),
+          Icon(icon, color: Colors.blue, size: 20),
           const SizedBox(width: 8),
-          Text(label),
-          const Spacer(),
-          const Icon(Icons.check, color: Colors.green),
+          Expanded(child: Text(text, style: const TextStyle(fontSize: 14))),
         ],
       ),
     );
