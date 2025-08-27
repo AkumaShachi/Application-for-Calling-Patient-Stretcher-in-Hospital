@@ -11,7 +11,7 @@ class _NurseExCaseScreenState extends State<NurseExCaseScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('เพิ่มเคสใหม่'),
+        title: const Text('ตัวอย่างการเพิ่มเคส'),
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
@@ -45,6 +45,20 @@ class _NurseExCaseScreenState extends State<NurseExCaseScreen> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Text(
+                'ข้อควรระวัง: กรุณาตรวจสอบความถูกต้องและความครบถ้วนของข้อมูลก่อนบันทึก เนื่องจากไม่สามารถแก้ไขได้ภายหลัง',
+                style: TextStyle(fontSize: 14),
+              ),
+            ),
+
             // ข้อมูลผู้ใช้และเคส
             Container(
               width: double.infinity,
