@@ -14,7 +14,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'AppName',
       home: LoginScreen(),
-      debugShowCheckedModeBanner: false,
+      debugShowCheckedModeBanner: false, //บอมหัวควย
     );
   }
 }
