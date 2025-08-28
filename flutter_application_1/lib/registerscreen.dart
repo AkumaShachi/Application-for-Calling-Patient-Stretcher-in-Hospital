@@ -447,6 +447,19 @@ class _RegisterScreenState extends State<RegisterScreen>
 
                                 const SizedBox(height: 18),
 
+                                FadeTransition(
+                                  opacity: _fades[5],
+                                  child: SlideTransition(
+                                    position: _slides[5],
+                                    child: _LabeledField(
+                                      controller: _usernameCtrl,
+                                      label: 'รหัสเจ้าหน้าที่/พยาบาล',
+                                      hint: 'รหัสพนักงาน',
+                                      icon: Icons.account_circle_rounded,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
                                 // username
                                 FadeTransition(
                                   opacity: _fades[5],
