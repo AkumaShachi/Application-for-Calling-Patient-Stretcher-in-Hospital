@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'nurses_screen/nurse_list_case.dart';
 import 'registerscreen.dart';
+import 'forgetscreen.dart';
 import 'porters_screen/porter_list_case.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -102,7 +103,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                   ),
                   TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => ForgetScreen()),
+                      );
+                    },
                     child: Text(
                       'ลืมรหัสผ่าน?',
                       style: TextStyle(color: Colors.deepPurple),
@@ -145,25 +151,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
-              SizedBox(height: 16),
-              // Terms
-              // Text.rich(
-              //   TextSpan(
-              //     text: 'การสมัครสมาชิก แสดงว่าคุณยอมรับ ',
-              //     children: [
-              //       TextSpan(
-              //         text: 'เงื่อนไขการใช้งาน',
-              //         style: TextStyle(color: Colors.deepPurple),
-              //       ),
-              //       TextSpan(text: ' และ '),
-              //       TextSpan(
-              //         text: 'นโยบายความเป็นส่วนตัว',
-              //         style: TextStyle(color: Colors.deepPurple),
-              //       ),
-              //     ],
-              //   ),
-              //   textAlign: TextAlign.center,
-              // ),
             ],
           ),
         ),

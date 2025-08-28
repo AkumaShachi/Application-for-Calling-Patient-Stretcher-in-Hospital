@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'dart:math';
+
+import 'nurse_ex-post_case.dart';
 
 class NurseAddCaseScreen extends StatefulWidget {
   const NurseAddCaseScreen({super.key});
@@ -7,6 +10,25 @@ class NurseAddCaseScreen extends StatefulWidget {
 }
 
 class _NurseAddCaseScreenState extends State<NurseAddCaseScreen> {
+  // controller สำหรับแต่ละช่อง
+  final TextEditingController patientIdController = TextEditingController();
+  final TextEditingController patientTypeController = TextEditingController();
+  final TextEditingController receivePointController = TextEditingController();
+  final TextEditingController sendPointController = TextEditingController();
+  final TextEditingController stretcherTypeController = TextEditingController();
+  final TextEditingController equipmentController = TextEditingController();
+
+  @override
+  void dispose() {
+    patientIdController.dispose();
+    patientTypeController.dispose();
+    receivePointController.dispose();
+    sendPointController.dispose();
+    stretcherTypeController.dispose();
+    equipmentController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -30,7 +52,12 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              // save logic here
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const NurseExCaseScreen(),
+                ),
+              );
             },
             child: const Text(
               'บันทึก',
@@ -45,14 +72,60 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 12),
+                  _inputItem(
+                    Icons.badge,
+                    'หมายเลขผู้ป่วย',
+                    patientIdController,
+                  ),
+                  _inputItem(
+                    Icons.person,
+                    'ประเภทผู้ป่วย',
+                    patientTypeController,
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _inputItem(
+                          Icons.location_on,
+                          'จุดรับ',
+                          receivePointController,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _inputItem(
+                          Icons.location_on,
+                          'จุดส่ง',
+                          sendPointController,
+                        ),
+                      ),
+                    ],
+                  ),
+                  _inputItem(Icons.bed, 'ประเภทเปล', stretcherTypeController),
+                  _inputItem(Icons.list, 'อุปกรณ์เสริม', equipmentController),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
             // 🔵 Mic button
             Column(
               children: [
                 CircleAvatar(
-                  radius: 36,
+                  radius: min(MediaQuery.of(context).size.width * 0.1, 100),
                   backgroundColor: Colors.blue[50],
                   child: IconButton(
-                    icon: const Icon(Icons.mic, size: 32, color: Colors.blue),
+                    icon: Icon(
+                      Icons.mic,
+                      size: min(MediaQuery.of(context).size.width * 0.1, 100),
+                      color: Colors.blue,
+                    ),
                     onPressed: () {
                       // ใส่ logic สำหรับเริ่มพูดตรงนี้
                     },
@@ -62,70 +135,50 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen> {
                 const Text('แตะเพื่อพูด', style: TextStyle(fontSize: 16)),
               ],
             ),
-            const SizedBox(height: 24),
-
-            // 🗒️ ข้อความที่พูด
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Text(
-                'ข้อความ:\nหมายเลขผู้ป่วย GE174 ประเภทผู้ป่วยใน จุดรับคัด C ชั้น 4 ส่งห้องเอกซเรย์ ใช้เปลนอน อุปกรณ์เสริมออกซิเจน',
-                style: TextStyle(fontSize: 14),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // ✅ ข้อมูลที่ต้องระบุ
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.blue[50],
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.info_outline, color: Colors.blue),
-                      SizedBox(width: 8),
-                      Text(
-                        'ข้อมูลที่ต้องระบุ:',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  _checkItem(Icons.badge, 'หมายเลขผู้ป่วย'),
-                  _checkItem(Icons.person, 'ประเภทผู้ป่วย'),
-                  _checkItem(Icons.location_on, 'จุดรับ-ส่ง'),
-                  _checkItem(Icons.bed, 'ประเภทเปล'),
-                  _checkItem(Icons.list, 'อุปกรณ์เสริม'),
-                ],
-              ),
-            ),
           ],
         ),
       ),
     );
   }
 
-  // ✅ Helper สำหรับรายการเช็ค
-  Widget _checkItem(IconData icon, String label) {
+  Widget _inputItem(
+    IconData icon,
+    String label,
+    TextEditingController controller,
+  ) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.only(bottom: 16.0),
       child: Row(
         children: [
           Icon(icon, color: Colors.blue),
           const SizedBox(width: 8),
-          Text(label),
-          const Spacer(),
-          const Icon(Icons.check, color: Colors.green),
+          Expanded(
+            child: TextFormField(
+              controller: controller,
+              decoration: InputDecoration(
+                labelText: label,
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                prefixIcon: const Icon(
+                  Icons.edit,
+                  size: 18,
+                  color: Colors.grey,
+                ),
+              ),
+              onChanged: (_) => setState(() {}),
+              validator:
+                  (value) =>
+                      value == null || value.isEmpty
+                          ? 'กรุณากรอก $label'
+                          : null,
+            ),
+          ),
+          const SizedBox(width: 8),
+          if (controller.text.isNotEmpty)
+            const Icon(Icons.check, color: Colors.green),
         ],
       ),
     );
