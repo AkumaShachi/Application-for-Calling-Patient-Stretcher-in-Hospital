@@ -379,32 +379,7 @@ class _LoginScreenState extends State<LoginScreen>
 
                   const SizedBox(height: 16),
                   // Terms
-                  Opacity(
-                    opacity: 0.85,
-                    child: Text.rich(
-                      TextSpan(
-                        text: 'การสมัครสมาชิก แสดงว่าคุณยอมรับ ',
-                        children: const [
-                          TextSpan(
-                            text: 'เงื่อนไขการใช้งาน',
-                            style: TextStyle(
-                              color: kDeepPurple,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          TextSpan(text: ' และ '),
-                          TextSpan(
-                            text: 'นโยบายความเป็นส่วนตัว',
-                            style: TextStyle(
-                              color: kDeepPurple,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
+                  Opacity(opacity: 0.85),
                 ],
               ),
             ),
