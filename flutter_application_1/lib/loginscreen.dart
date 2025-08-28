@@ -151,25 +151,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
-              SizedBox(height: 16),
-              // Terms
-              Text.rich(
-                TextSpan(
-                  text: 'การสมัครสมาชิก แสดงว่าคุณยอมรับ ',
-                  children: [
-                    TextSpan(
-                      text: 'เงื่อนไขการใช้งาน',
-                      style: TextStyle(color: Colors.deepPurple),
-                    ),
-                    TextSpan(text: ' และ '),
-                    TextSpan(
-                      text: 'นโยบายความเป็นส่วนตัว',
-                      style: TextStyle(color: Colors.deepPurple),
-                    ),
-                  ],
-                ),
-                textAlign: TextAlign.center,
-              ),
             ],
           ),
         ),
