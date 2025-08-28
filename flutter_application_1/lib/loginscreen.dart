@@ -376,10 +376,6 @@ class _LoginScreenState extends State<LoginScreen>
                       ],
                     ),
                   ),
-
-                  const SizedBox(height: 16),
-                  // Terms
-                  Opacity(opacity: 0.85),
                 ],
               ),
             ),

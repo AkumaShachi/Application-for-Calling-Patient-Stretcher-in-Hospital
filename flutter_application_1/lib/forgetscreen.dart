@@ -180,31 +180,6 @@ class _ForgetScreenState extends State<ForgetScreen>
                   const SizedBox(height: 24),
 
                   // Info Box
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: kLavender.withOpacity(0.6),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: kDeepPurple.withOpacity(0.4)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text(
-                          "ขั้นตอนต่อไป",
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: kDeepPurple,
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Text("1. เราจะส่งรหัสรีเซ็ตไปยังอีเมลของคุณ"),
-                        Text("2. ตรวจสอบกล่องขาเข้า (หรือสแปม)"),
-                        Text("3. นำรหัสมาใช้ในหน้าถัดไป"),
-                      ],
-                    ),
-                  ),
-
                   const SizedBox(height: 16),
                   Center(
                     child: TextButton(
