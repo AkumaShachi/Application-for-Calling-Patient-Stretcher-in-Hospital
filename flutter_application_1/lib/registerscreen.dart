@@ -5,138 +5,103 @@ class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
   @override
-  _RegisterScreenState createState() => _RegisterScreenState();
+  State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
 class _RegisterScreenState extends State<RegisterScreen>
     with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
+  final _idCtrl = TextEditingController();
+  final _nameCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _usernameCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+  final _confirmCtrl = TextEditingController();
+  final _TokenCtrl = TextEditingController();
 
-  // ฟิลด์/สถานะ
-  String? selectedRole = 'พยาบาล';
-  final TextEditingController _idCtrl = TextEditingController();
-  final TextEditingController _nameCtrl = TextEditingController();
-  final TextEditingController _phoneCtrl = TextEditingController();
-  final TextEditingController _emailCtrl = TextEditingController();
-  final TextEditingController _usernameCtrl = TextEditingController();
-  final TextEditingController _passwordCtrl = TextEditingController();
-  final TextEditingController _confirmCtrl = TextEditingController();
-
+  int _fieldsIndex = 10;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _loading = false;
+  String? selectedRole = 'พยาบาล';
 
-  bool _loading = false; // แสดงโหลดตอนส่งฟอร์ม
-  bool _exiting = false; // เผื่ออยากทำ exit animation เพิ่มภายหลัง
-
-  // โทนสีหลัก
   static const Color kDeepPurple = Color(0xFF5B2EFF);
   static const Color kPurple = Color(0xFF8C6CFF);
   static const Color kLavender = Color(0xFFEDE9FF);
 
-  // ---------- Animations ----------
-  late final AnimationController _inCtrl; // entrance stagger
-  late final AnimationController _shakeCtrl; // error shake
-
-  late final Animation<double> _titleFade;
-  late final Animation<Offset> _titleSlide;
-
-  late final Animation<double> _cardFade;
-  late final Animation<Offset> _cardSlide;
-
-  // ลำดับฟิลด์: id, name, phone, email, role, username, pass, confirm, button
-  late final List<Animation<double>> _fades;
-  late final List<Animation<Offset>> _slides;
-
-  // shake ทั้งการ์ดเมื่อ error
-  late final Animation<Offset> _shakeOffset;
-
-  @override
-  void initState() {
-    super.initState();
-
-    // Staggered entrance timeline 0..1
-    _inCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1100),
-    );
-
-    // Title
-    _titleFade = CurvedAnimation(
+  late final AnimationController _inCtrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  );
+  late final AnimationController _shakeCtrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 380),
+  );
+  late final Animation<double> _titleFade = CurvedAnimation(
+    parent: _inCtrl,
+    curve: const Interval(0.00, 0.20, curve: Curves.easeOut),
+  );
+  late final Animation<Offset> _titleSlide = Tween<Offset>(
+    begin: const Offset(0, .20),
+    end: Offset.zero,
+  ).animate(
+    CurvedAnimation(
       parent: _inCtrl,
-      curve: const Interval(0.00, 0.20, curve: Curves.easeOut),
-    );
-    _titleSlide = Tween<Offset>(
-      begin: const Offset(0, .20),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _inCtrl,
-        curve: const Interval(0.00, 0.20, curve: Curves.easeOutBack),
-      ),
-    );
-
-    // Card
-    _cardFade = CurvedAnimation(
+      curve: const Interval(0.00, 0.20, curve: Curves.easeOutBack),
+    ),
+  );
+  late final Animation<double> _cardFade = CurvedAnimation(
+    parent: _inCtrl,
+    curve: const Interval(0.12, 0.35, curve: Curves.easeOut),
+  );
+  late final Animation<Offset> _cardSlide = Tween<Offset>(
+    begin: const Offset(0, .15),
+    end: Offset.zero,
+  ).animate(
+    CurvedAnimation(
       parent: _inCtrl,
-      curve: const Interval(0.12, 0.35, curve: Curves.easeOut),
-    );
-    _cardSlide = Tween<Offset>(
-      begin: const Offset(0, .15),
-      end: Offset.zero,
-    ).animate(
+      curve: const Interval(0.12, 0.35, curve: Curves.easeOutCubic),
+    ),
+  );
+  late final List<Animation<double>> _fades = List.generate(
+    _fieldsIndex + 1,
+    (i) => CurvedAnimation(
+      parent: _inCtrl,
+      curve: Interval(0.30 + i * 0.06, 0.55 + i * 0.06, curve: Curves.easeOut),
+    ),
+  );
+  late final List<Animation<Offset>> _slides = List.generate(
+    _fieldsIndex + 1,
+    (i) => Tween<Offset>(begin: const Offset(0, .12), end: Offset.zero).animate(
       CurvedAnimation(
-        parent: _inCtrl,
-        curve: const Interval(0.12, 0.35, curve: Curves.easeOutCubic),
-      ),
-    );
-
-    // Fields + Button stagger
-    final items = 9;
-    _fades = List.generate(
-      items,
-      (i) => CurvedAnimation(
         parent: _inCtrl,
         curve: Interval(
           0.30 + i * 0.06,
           0.55 + i * 0.06,
-          curve: Curves.easeOut,
+          curve: Curves.easeOutBack,
         ),
       ),
-    );
-    _slides = List.generate(
-      items,
-      (i) =>
-          Tween<Offset>(begin: const Offset(0, .12), end: Offset.zero).animate(
-            CurvedAnimation(
-              parent: _inCtrl,
-              curve: Interval(
-                0.30 + i * 0.06,
-                0.55 + i * 0.06,
-                curve: Curves.easeOutBack,
-              ),
-            ),
-          ),
-    );
+    ),
+  );
+  late final Animation<Offset> _shakeOffset = TweenSequence<Offset>([
+    TweenSequenceItem(
+      tween: Tween(begin: Offset.zero, end: const Offset(0.03, 0)),
+      weight: 1,
+    ),
+    TweenSequenceItem(
+      tween: Tween(begin: const Offset(0.03, 0), end: const Offset(-0.03, 0)),
+      weight: 2,
+    ),
+    TweenSequenceItem(
+      tween: Tween(begin: const Offset(-0.03, 0), end: Offset.zero),
+      weight: 1,
+    ),
+  ]).animate(CurvedAnimation(parent: _shakeCtrl, curve: Curves.easeInOut));
 
-    // Shake เมื่อ error
-    _shakeCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 380),
-    );
-    _shakeOffset = TweenSequence<Offset>([
-      TweenSequenceItem(
-        tween: Tween(begin: Offset.zero, end: const Offset(0.03, 0)),
-        weight: 1,
-      ),
-      TweenSequenceItem(
-        tween: Tween(begin: const Offset(0.03, 0), end: const Offset(-0.03, 0)),
-        weight: 2,
-      ),
-      TweenSequenceItem(
-        tween: Tween(begin: const Offset(-0.03, 0), end: Offset.zero),
-        weight: 1,
-      ),
-    ]).animate(CurvedAnimation(parent: _shakeCtrl, curve: Curves.easeInOut));
+  @override
+  void initState() {
+    super.initState();
 
     // start
     Future.delayed(const Duration(milliseconds: 180), _inCtrl.forward);
@@ -150,6 +115,7 @@ class _RegisterScreenState extends State<RegisterScreen>
     _nameCtrl.dispose();
     _phoneCtrl.dispose();
     _emailCtrl.dispose();
+    _TokenCtrl.dispose();
     _usernameCtrl.dispose();
     _passwordCtrl.dispose();
     _confirmCtrl.dispose();
@@ -160,23 +126,22 @@ class _RegisterScreenState extends State<RegisterScreen>
     // ตรวจ form
     if (!_formKey.currentState!.validate()) {
       _shakeCtrl.forward(from: 0);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('กรุณากรอกข้อมูลให้ครบถ้วน')),
-      );
+      _showMsg('กรุณากรอกข้อมูลให้ครบถ้วน');
       return;
     }
     if (_passwordCtrl.text.length < 6) {
       _shakeCtrl.forward(from: 0);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('รหัสผ่านอย่างน้อย 6 ตัวอักษร')),
-      );
+      _showMsg('รหัสผ่านอย่างน้อย 6 ตัวอักษร');
+      return;
+    }
+    if (_TokenCtrl.text != "123456" && _TokenCtrl.text != "654321") {
+      _shakeCtrl.forward(from: 0);
+      _showMsg('รหัสพนักงานไม่ถูกต้อง');
       return;
     }
     if (_passwordCtrl.text != _confirmCtrl.text) {
       _shakeCtrl.forward(from: 0);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('รหัสผ่านไม่ตรงกัน')));
+      _showMsg('รหัสผ่านไม่ตรงกัน');
       return;
     }
 
@@ -186,22 +151,132 @@ class _RegisterScreenState extends State<RegisterScreen>
     if (!mounted) return;
 
     setState(() => _loading = false);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('ลงทะเบียนสำเร็จ!')));
+    _showMsg('ลงทะเบียนสำเร็จ!');
     await Future.delayed(const Duration(milliseconds: 350));
     if (!mounted) return;
     Navigator.pop(context);
+  }
+
+  void _showMsg(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    final fields = [
+      _LabeledField(
+        controller: _idCtrl,
+        label: 'เลขประจำตัว',
+        hint: '',
+        icon: Icons.badge_rounded,
+      ),
+      _LabeledField(
+        controller: _nameCtrl,
+        label: 'ชื่อ-นามสกุล',
+        hint: '',
+        icon: Icons.person_rounded,
+      ),
+      _LabeledField(
+        controller: _phoneCtrl,
+        label: 'เบอร์โทรศัพท์',
+        hint: '',
+        keyboard: TextInputType.phone,
+        icon: Icons.phone_rounded,
+      ),
+      _LabeledField(
+        controller: _emailCtrl,
+        label: 'อีเมล',
+        hint: '',
+        keyboard: TextInputType.emailAddress,
+        icon: Icons.alternate_email_rounded,
+        validator: (v) {
+          if (v == null || v.isEmpty) return 'กรุณากรอก อีเมล';
+          final ok = RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v);
+          return ok ? null : 'รูปแบบอีเมลไม่ถูกต้อง';
+        },
+      ),
+      Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          'ตำแหน่ง',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+      Wrap(
+        spacing: 8,
+        children:
+            ['พยาบาล', 'เจ้าหน้าที่แปล']
+                .map(
+                  (role) => ChoiceChip(
+                    label: Text(role),
+                    selected: selectedRole == role,
+                    onSelected: (sel) => setState(() => selectedRole = role),
+                    selectedColor: kLavender,
+                    backgroundColor: Colors.white,
+                    labelStyle: TextStyle(
+                      color:
+                          selectedRole == role ? kDeepPurple : Colors.black87,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      side: BorderSide(
+                        color: selectedRole == role ? kDeepPurple : kLavender,
+                        width: 1.4,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                )
+                .toList(),
+      ),
+      _LabeledField(
+        controller: _TokenCtrl,
+        label: 'รหัสเจ้าหน้าที่/พยาบาล',
+        hint: 'รหัสพนักงาน',
+        icon: Icons.account_circle_rounded,
+      ),
+      _LabeledField(
+        controller: _usernameCtrl,
+        label: 'ชื่อผู้ใช้',
+        hint: 'username',
+        icon: Icons.account_circle_rounded,
+      ),
+      _LabeledPasswordField(
+        controller: _passwordCtrl,
+        label: 'รหัสผ่าน',
+        hint: 'อย่างน้อย 6 ตัวอักษร',
+        obscure: _obscurePassword,
+        onToggle: () => setState(() => _obscurePassword = !_obscurePassword),
+        validator: (v) {
+          if (v == null || v.isEmpty) return 'กรุณากรอก รหัสผ่าน';
+          if (v.length < 6) return 'รหัสผ่านอย่างน้อย 6 ตัวอักษร';
+          return null;
+        },
+      ),
+      _LabeledPasswordField(
+        controller: _confirmCtrl,
+        label: 'ยืนยันรหัสผ่าน',
+        hint: 'กรอกรหัสผ่านอีกครั้ง',
+        obscure: _obscureConfirmPassword,
+        onToggle:
+            () => setState(
+              () => _obscureConfirmPassword = !_obscureConfirmPassword,
+            ),
+        validator: (v) {
+          if (v == null || v.isEmpty) return 'กรุณากรอก ยืนยันรหัสผ่าน';
+          if (v != _passwordCtrl.text) return 'รหัสผ่านไม่ตรงกัน';
+          return null;
+        },
+      ),
+    ];
+
     return Scaffold(
       body: Stack(
         children: [
-          // พื้นหลัง gradient + soft blobs
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -233,14 +308,12 @@ class _RegisterScreenState extends State<RegisterScreen>
               ],
             ),
           ),
-
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // AppBar แบบมินิมอล
                   Row(
                     children: [
                       IconButton(
@@ -262,8 +335,6 @@ class _RegisterScreenState extends State<RegisterScreen>
                     ],
                   ),
                   const SizedBox(height: 12),
-
-                  // TITLE + sub (animated)
                   FadeTransition(
                     opacity: _titleFade,
                     child: SlideTransition(
@@ -296,10 +367,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 20),
-
-                  // การ์ดฟอร์ม + shake เมื่อ error
                   SlideTransition(
                     position: _shakeOffset,
                     child: FadeTransition(
@@ -311,224 +379,15 @@ class _RegisterScreenState extends State<RegisterScreen>
                             key: _formKey,
                             child: Column(
                               children: [
-                                // id
-                                FadeTransition(
-                                  opacity: _fades[0],
-                                  child: SlideTransition(
-                                    position: _slides[0],
-                                    child: _LabeledField(
-                                      controller: _idCtrl,
-                                      label: 'เลขประจำตัว',
-                                      hint: '',
-                                      icon: Icons.badge_rounded,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 14),
-                                // name
-                                FadeTransition(
-                                  opacity: _fades[1],
-                                  child: SlideTransition(
-                                    position: _slides[1],
-                                    child: _LabeledField(
-                                      controller: _nameCtrl,
-                                      label: 'ชื่อ-นามสกุล',
-                                      hint: '',
-                                      icon: Icons.person_rounded,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 14),
-                                // phone
-                                FadeTransition(
-                                  opacity: _fades[2],
-                                  child: SlideTransition(
-                                    position: _slides[2],
-                                    child: _LabeledField(
-                                      controller: _phoneCtrl,
-                                      label: 'เบอร์โทรศัพท์',
-                                      hint: '',
-                                      keyboard: TextInputType.phone,
-                                      icon: Icons.phone_rounded,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 14),
-                                // email
-                                FadeTransition(
-                                  opacity: _fades[3],
-                                  child: SlideTransition(
-                                    position: _slides[3],
-                                    child: _LabeledField(
-                                      controller: _emailCtrl,
-                                      label: 'อีเมล',
-                                      hint: '',
-                                      keyboard: TextInputType.emailAddress,
-                                      icon: Icons.alternate_email_rounded,
-                                      validator: (v) {
-                                        if (v == null || v.isEmpty)
-                                          return 'กรุณากรอก อีเมล';
-                                        final ok = RegExp(
-                                          r'^[^@]+@[^@]+\.[^@]+',
-                                        ).hasMatch(v);
-                                        return ok
-                                            ? null
-                                            : 'รูปแบบอีเมลไม่ถูกต้อง';
-                                      },
-                                    ),
-                                  ),
-                                ),
-
-                                const SizedBox(height: 18),
-
-                                // ตำแหน่ง
-                                FadeTransition(
-                                  opacity: _fades[4],
-                                  child: SlideTransition(
-                                    position: _slides[4],
-                                    child: Align(
-                                      alignment: Alignment.centerLeft,
-                                      child: Text(
-                                        'ตำแหน่ง',
-                                        style: theme.textTheme.titleMedium
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-
-                                FadeTransition(
-                                  opacity: _fades[4],
-                                  child: SlideTransition(
-                                    position: _slides[4],
-                                    child: Wrap(
-                                      spacing: 8,
-                                      runSpacing: 8,
-                                      children: [
-                                        for (final role in const [
-                                          'พยาบาล',
-                                          'เจ้าหน้าที่แปล',
-                                        ])
-                                          ChoiceChip(
-                                            label: Text(role),
-                                            selected: selectedRole == role,
-                                            onSelected:
-                                                (sel) => setState(
-                                                  () => selectedRole = role,
-                                                ),
-                                            selectedColor: kLavender,
-                                            backgroundColor: Colors.white,
-                                            labelStyle: TextStyle(
-                                              color:
-                                                  selectedRole == role
-                                                      ? kDeepPurple
-                                                      : Colors.black87,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                            shape: RoundedRectangleBorder(
-                                              side: BorderSide(
-                                                color:
-                                                    selectedRole == role
-                                                        ? kDeepPurple
-                                                        : kLavender,
-                                                width: 1.4,
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-
-                                const SizedBox(height: 18),
-
-                                // username
-                                FadeTransition(
-                                  opacity: _fades[5],
-                                  child: SlideTransition(
-                                    position: _slides[5],
-                                    child: _LabeledField(
-                                      controller: _usernameCtrl,
-                                      label: 'ชื่อผู้ใช้',
-                                      hint: 'username',
-                                      icon: Icons.account_circle_rounded,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 14),
-
-                                // password
-                                FadeTransition(
-                                  opacity: _fades[6],
-                                  child: SlideTransition(
-                                    position: _slides[6],
-                                    child: _LabeledPasswordField(
-                                      controller: _passwordCtrl,
-                                      label: 'รหัสผ่าน',
-                                      hint: 'อย่างน้อย 6 ตัวอักษร',
-                                      obscure: _obscurePassword,
-                                      onToggle:
-                                          () => setState(
-                                            () =>
-                                                _obscurePassword =
-                                                    !_obscurePassword,
-                                          ),
-                                      validator: (v) {
-                                        if (v == null || v.isEmpty)
-                                          return 'กรุณากรอก รหัสผ่าน';
-                                        if (v.length < 6)
-                                          return 'รหัสผ่านอย่างน้อย 6 ตัวอักษร';
-                                        return null;
-                                      },
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 14),
-
-                                // confirm
-                                FadeTransition(
-                                  opacity: _fades[7],
-                                  child: SlideTransition(
-                                    position: _slides[7],
-                                    child: _LabeledPasswordField(
-                                      controller: _confirmCtrl,
-                                      label: 'ยืนยันรหัสผ่าน',
-                                      hint: 'กรอกรหัสผ่านอีกครั้ง',
-                                      obscure: _obscureConfirmPassword,
-                                      onToggle:
-                                          () => setState(
-                                            () =>
-                                                _obscureConfirmPassword =
-                                                    !_obscureConfirmPassword,
-                                          ),
-                                      validator: (v) {
-                                        if (v == null || v.isEmpty)
-                                          return 'กรุณากรอก ยืนยันรหัสผ่าน';
-                                        if (v != _passwordCtrl.text)
-                                          return 'รหัสผ่านไม่ตรงกัน';
-                                        return null;
-                                      },
-                                    ),
-                                  ),
-                                ),
-
+                                for (int i = 0; i < fields.length; i++)
+                                  _animatedField(i, fields[i]),
                                 const SizedBox(height: 12),
-
-                                // ปุ่ม
-                                FadeTransition(
-                                  opacity: _fades[8],
-                                  child: SlideTransition(
-                                    position: _slides[8],
-                                    child: _GradientButton(
-                                      text: 'ลงทะเบียน',
-                                      loading: _loading,
-                                      onTap: _loading ? null : _submit,
-                                    ),
+                                _animatedField(
+                                  fields.length,
+                                  _GradientButton(
+                                    text: 'ลงทะเบียน',
+                                    loading: _loading,
+                                    onTap: _loading ? null : _submit,
                                   ),
                                 ),
                               ],
@@ -538,10 +397,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 24),
-
-                  // Footer เล็ก ๆ
                   Center(child: Opacity(opacity: 0.7)),
                 ],
               ),
@@ -551,6 +407,17 @@ class _RegisterScreenState extends State<RegisterScreen>
       ),
     );
   }
+
+  Widget _animatedField(int i, Widget child) => FadeTransition(
+    opacity: _fades[i],
+    child: SlideTransition(
+      position: _slides[i],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        child: child,
+      ),
+    ),
+  );
 }
 
 /* ------------------------- Reusable UI ------------------------- */
