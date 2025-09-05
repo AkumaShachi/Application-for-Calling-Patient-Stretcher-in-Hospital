@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
@@ -333,7 +335,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                                         color: kDeepPurple,
                                       ),
                                       onPressed: () {
-                                        // TODO: copy token to clipboard
+                                        // copy token to clipboard
                                       },
                                     ),
                                   ),

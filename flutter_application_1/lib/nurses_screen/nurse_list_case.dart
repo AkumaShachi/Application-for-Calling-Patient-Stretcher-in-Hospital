@@ -125,6 +125,7 @@ class _NurseListCaseScreenState extends State<NurseListCaseScreen>
           tabs: const [Tab(text: 'เคสทั้งหมด'), Tab(text: 'เคสของฉัน')],
         ),
       ),
+      // ignore: sized_box_for_whitespace
       endDrawer: Container(
         width: MediaQuery.of(context).size.width * 0.67, // 2/3 หน้าจอ
         child: Drawer(

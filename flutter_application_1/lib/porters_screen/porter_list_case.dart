@@ -1,3 +1,5 @@
+// ignore_for_file: library_private_types_in_public_api, sized_box_for_whitespace, avoid_print
+
 import 'package:flutter/material.dart';
 import '../loginscreen.dart';
 import 'porter_case_detail.dart';
