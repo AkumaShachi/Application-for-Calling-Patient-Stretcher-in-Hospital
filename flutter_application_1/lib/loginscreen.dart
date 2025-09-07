@@ -1,4 +1,4 @@
-// ignore_for_file: unused_field, deprecated_member_use
+// ignore_for_file: unused_field, deprecated_member_use, avoid_print
 
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -7,6 +7,7 @@ import 'nurses_screen/nurse_list_case.dart';
 import 'porters_screen/porter_list_case.dart';
 import 'registerscreen.dart';
 import 'forgetscreen.dart';
+import 'services/login_functions.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -63,24 +64,31 @@ class _LoginScreenState extends State<LoginScreen>
     super.dispose();
   }
 
-  void _login() {
+  Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
-    final email = emailController.text.trim();
+    final username = emailController.text.trim();
     final password = passwordController.text.trim();
-    if (email.isEmpty || password.isEmpty) {
+    if (username.isEmpty || password.isEmpty) {
       _showMsg('กรุณากรอกข้อมูลให้ครบถ้วน');
       return;
     }
-    if (email == "nurse" && password == "nurse") {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => NurseListCaseScreen()),
-      );
-    } else if (email == "porter" && password == "porter") {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => PorterCaseListScreen()),
-      );
+    var loginResult = await LoginFunctions.loginUser(username, password);
+
+    if (loginResult?['status'] == 'success') {
+      var role = loginResult?['role'];
+      if (role == 'nurse') {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => NurseListCaseScreen()),
+        );
+      } else if (role == 'porter') {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => PorterCaseListScreen()),
+        );
+      } else {
+        _showMsg('บทบาทผู้ใช้ไม่ถูกต้อง');
+      }
     } else {
       _showMsg('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
     }
@@ -100,8 +108,8 @@ class _LoginScreenState extends State<LoginScreen>
         hint: 'กรอกชื่อผู้ใช้',
         controller: emailController,
         icon: Icons.account_circle_rounded,
-        validator:
-            (v) => (v == null || v.isEmpty) ? 'กรุณากรอก ชื่อผู้ใช้' : null,
+        validator: (v) =>
+            (v == null || v.isEmpty) ? 'กรุณากรอก ชื่อผู้ใช้' : null,
       ),
       _buildField(
         label: 'รหัสผ่าน',
@@ -110,8 +118,8 @@ class _LoginScreenState extends State<LoginScreen>
         icon: Icons.lock_rounded,
         obscure: !showPassword,
         onToggle: () => setState(() => showPassword = !showPassword),
-        validator:
-            (v) => (v == null || v.isEmpty) ? 'กรุณากรอก รหัสผ่าน' : null,
+        validator: (v) =>
+            (v == null || v.isEmpty) ? 'กรุณากรอก รหัสผ่าน' : null,
       ),
     ];
 
@@ -192,10 +200,9 @@ class _LoginScreenState extends State<LoginScreen>
                     child: SlideTransition(
                       position: _titleSlide,
                       child: ShaderMask(
-                        shaderCallback:
-                            (rect) => const LinearGradient(
-                              colors: [kDeepPurple, kPurple],
-                            ).createShader(rect),
+                        shaderCallback: (rect) => const LinearGradient(
+                          colors: [kDeepPurple, kPurple],
+                        ).createShader(rect),
                         child: const Text(
                           'เรียกเปลคนไข้',
                           style: TextStyle(
@@ -224,22 +231,19 @@ class _LoginScreenState extends State<LoginScreen>
                               children: [
                                 Checkbox(
                                   value: rememberMe,
-                                  onChanged:
-                                      (v) => setState(
-                                        () => rememberMe = v ?? false,
-                                      ),
+                                  onChanged: (v) =>
+                                      setState(() => rememberMe = v ?? false),
                                 ),
                                 const Text('จำรหัสผ่าน'),
                               ],
                             ),
                             TextButton(
-                              onPressed:
-                                  () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => const ForgetScreen(),
-                                    ),
-                                  ),
+                              onPressed: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const ForgetScreen(),
+                                ),
+                              ),
                               style: TextButton.styleFrom(
                                 foregroundColor: kDeepPurple,
                               ),
@@ -266,13 +270,12 @@ class _LoginScreenState extends State<LoginScreen>
                               style: theme.textTheme.bodyMedium,
                             ),
                             GestureDetector(
-                              onTap:
-                                  () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => const RegisterScreen(),
-                                    ),
-                                  ),
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const RegisterScreen(),
+                                ),
+                              ),
                               child: const Text(
                                 'ลงทะเบียน',
                                 style: TextStyle(
@@ -337,16 +340,15 @@ class _LoginScreenState extends State<LoginScreen>
               borderRadius: BorderRadius.circular(14),
               borderSide: BorderSide(color: kDeepPurple, width: 1.6),
             ),
-            suffixIcon:
-                onToggle != null
-                    ? IconButton(
-                      onPressed: onToggle,
-                      icon: Icon(
-                        obscure ? Icons.visibility : Icons.visibility_off,
-                        color: kDeepPurple,
-                      ),
-                    )
-                    : null,
+            suffixIcon: onToggle != null
+                ? IconButton(
+                    onPressed: onToggle,
+                    icon: Icon(
+                      obscure ? Icons.visibility : Icons.visibility_off,
+                      color: kDeepPurple,
+                    ),
+                  )
+                : null,
           ),
         ),
       ],

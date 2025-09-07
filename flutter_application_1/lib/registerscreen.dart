@@ -3,6 +3,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
+import 'services/regis_functions.dart';
+
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -12,21 +14,21 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen>
     with TickerProviderStateMixin {
-  final _formKey = GlobalKey<FormState>();
-  final _idCtrl = TextEditingController();
-  final _nameCtrl = TextEditingController();
-  final _phoneCtrl = TextEditingController();
-  final _emailCtrl = TextEditingController();
-  final _usernameCtrl = TextEditingController();
-  final _passwordCtrl = TextEditingController();
-  final _confirmCtrl = TextEditingController();
-  final _TokenCtrl = TextEditingController();
+  var _formKey = GlobalKey<FormState>();
+  var _idCtrl = TextEditingController();
+  var _nameCtrl = TextEditingController();
+  var _phoneCtrl = TextEditingController();
+  var _emailCtrl = TextEditingController();
+  var _usernameCtrl = TextEditingController();
+  var _passwordCtrl = TextEditingController();
+  var _confirmCtrl = TextEditingController();
+  var _TokenCtrl = TextEditingController();
 
   int _fieldsIndex = 10;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _loading = false;
-  String? selectedRole = 'พยาบาล';
+  String? selectedRole = '';
 
   static const Color kDeepPurple = Color(0xFF5B2EFF);
   static const Color kPurple = Color(0xFF8C6CFF);
@@ -44,28 +46,24 @@ class _RegisterScreenState extends State<RegisterScreen>
     parent: _inCtrl,
     curve: const Interval(0.00, 0.20, curve: Curves.easeOut),
   );
-  late final Animation<Offset> _titleSlide = Tween<Offset>(
-    begin: const Offset(0, .20),
-    end: Offset.zero,
-  ).animate(
-    CurvedAnimation(
-      parent: _inCtrl,
-      curve: const Interval(0.00, 0.20, curve: Curves.easeOutBack),
-    ),
-  );
+  late final Animation<Offset> _titleSlide =
+      Tween<Offset>(begin: const Offset(0, .20), end: Offset.zero).animate(
+        CurvedAnimation(
+          parent: _inCtrl,
+          curve: const Interval(0.00, 0.20, curve: Curves.easeOutBack),
+        ),
+      );
   late final Animation<double> _cardFade = CurvedAnimation(
     parent: _inCtrl,
     curve: const Interval(0.12, 0.35, curve: Curves.easeOut),
   );
-  late final Animation<Offset> _cardSlide = Tween<Offset>(
-    begin: const Offset(0, .15),
-    end: Offset.zero,
-  ).animate(
-    CurvedAnimation(
-      parent: _inCtrl,
-      curve: const Interval(0.12, 0.35, curve: Curves.easeOutCubic),
-    ),
-  );
+  late final Animation<Offset> _cardSlide =
+      Tween<Offset>(begin: const Offset(0, .15), end: Offset.zero).animate(
+        CurvedAnimation(
+          parent: _inCtrl,
+          curve: const Interval(0.12, 0.35, curve: Curves.easeOutCubic),
+        ),
+      );
   late final List<Animation<double>> _fades = List.generate(
     _fieldsIndex + 1,
     (i) => CurvedAnimation(
@@ -136,7 +134,13 @@ class _RegisterScreenState extends State<RegisterScreen>
       _showMsg('รหัสผ่านอย่างน้อย 6 ตัวอักษร');
       return;
     }
-    if (_TokenCtrl.text != "123456" && _TokenCtrl.text != "654321") {
+    if (_TokenCtrl.text == "123456" || _TokenCtrl.text == "654321") {
+      if (_TokenCtrl.text == "123456") {
+        selectedRole = "porter";
+      } else if (_TokenCtrl.text == "654321") {
+        selectedRole = "nurse";
+      }
+    } else {
       _shakeCtrl.forward(from: 0);
       _showMsg('รหัสพนักงานไม่ถูกต้อง');
       return;
@@ -156,6 +160,20 @@ class _RegisterScreenState extends State<RegisterScreen>
     _showMsg('ลงทะเบียนสำเร็จ!');
     await Future.delayed(const Duration(milliseconds: 350));
     if (!mounted) return;
+
+    var fullName = _nameCtrl.text.split(' ');
+
+    var data = {
+      "id_U": _idCtrl.text,
+      "fname_U": fullName[0],
+      "lname_U": fullName.length > 1 ? fullName[1] : '',
+      "phone_U": _phoneCtrl.text,
+      "email_U": _emailCtrl.text,
+      "role_U": selectedRole,
+      "username": _usernameCtrl.text,
+      "password": _passwordCtrl.text,
+    };
+    RegisFunctions.addRegistrant(data);
     Navigator.pop(context);
   }
 
@@ -208,33 +226,6 @@ class _RegisterScreenState extends State<RegisterScreen>
           ),
         ),
       ),
-      Wrap(
-        spacing: 8,
-        children:
-            ['พยาบาล', 'เจ้าหน้าที่แปล']
-                .map(
-                  (role) => ChoiceChip(
-                    label: Text(role),
-                    selected: selectedRole == role,
-                    onSelected: (sel) => setState(() => selectedRole = role),
-                    selectedColor: kLavender,
-                    backgroundColor: Colors.white,
-                    labelStyle: TextStyle(
-                      color:
-                          selectedRole == role ? kDeepPurple : Colors.black87,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      side: BorderSide(
-                        color: selectedRole == role ? kDeepPurple : kLavender,
-                        width: 1.4,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                )
-                .toList(),
-      ),
       _LabeledField(
         controller: _TokenCtrl,
         label: 'รหัสเจ้าหน้าที่/พยาบาล',
@@ -264,10 +255,8 @@ class _RegisterScreenState extends State<RegisterScreen>
         label: 'ยืนยันรหัสผ่าน',
         hint: 'กรอกรหัสผ่านอีกครั้ง',
         obscure: _obscureConfirmPassword,
-        onToggle:
-            () => setState(
-              () => _obscureConfirmPassword = !_obscureConfirmPassword,
-            ),
+        onToggle: () =>
+            setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
         validator: (v) {
           if (v == null || v.isEmpty) return 'กรุณากรอก ยืนยันรหัสผ่าน';
           if (v != _passwordCtrl.text) return 'รหัสผ่านไม่ตรงกัน';
@@ -345,10 +334,9 @@ class _RegisterScreenState extends State<RegisterScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           ShaderMask(
-                            shaderCallback:
-                                (r) => const LinearGradient(
-                                  colors: [kDeepPurple, kPurple],
-                                ).createShader(r),
+                            shaderCallback: (r) => const LinearGradient(
+                              colors: [kDeepPurple, kPurple],
+                            ).createShader(r),
                             child: const Text(
                               'สร้างบัญชีใหม่',
                               style: TextStyle(
@@ -530,10 +518,9 @@ class _LabeledField extends StatelessWidget {
                 validator ??
                 (v) => (v == null || v.isEmpty) ? 'กรุณากรอก $label' : null,
             decoration: InputDecoration(
-              prefixIcon:
-                  icon != null
-                      ? Icon(icon, color: _RegisterScreenState.kDeepPurple)
-                      : null,
+              prefixIcon: icon != null
+                  ? Icon(icon, color: _RegisterScreenState.kDeepPurple)
+                  : null,
               hintText: hint,
               filled: true,
               fillColor: Colors.white,
@@ -671,25 +658,24 @@ class _GradientButtonState extends State<_GradientButton>
 
   @override
   Widget build(BuildContext context) {
-    final child =
-        widget.loading
-            ? const SizedBox(
-              height: 22,
-              width: 22,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.4,
-                color: Colors.white,
-              ),
-            )
-            : Text(
-              widget.text,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.2,
-                fontSize: 16,
-              ),
-            );
+    final child = widget.loading
+        ? const SizedBox(
+            height: 22,
+            width: 22,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.4,
+              color: Colors.white,
+            ),
+          )
+        : Text(
+            widget.text,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.2,
+              fontSize: 16,
+            ),
+          );
 
     return GestureDetector(
       onTapDown: (_) {
