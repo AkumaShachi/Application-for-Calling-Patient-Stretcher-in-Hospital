@@ -2,6 +2,7 @@
 
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'services/regis_functions.dart';
 
@@ -220,15 +221,6 @@ class _RegisterScreenState extends State<RegisterScreen>
           final ok = RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v);
           return ok ? null : 'รูปแบบอีเมลไม่ถูกต้อง';
         },
-      ),
-      Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          'ตำแหน่ง',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
-        ),
       ),
       _LabeledField(
         controller: _TokenCtrl,
@@ -521,6 +513,9 @@ class _LabeledField extends StatelessWidget {
             validator:
                 validator ??
                 (v) => (v == null || v.isEmpty) ? 'กรุณากรอก $label' : null,
+            inputFormatters: keyboard == TextInputType.phone
+                ? [FilteringTextInputFormatter.digitsOnly]
+                : null,
             decoration: InputDecoration(
               prefixIcon: icon != null
                   ? Icon(icon, color: _RegisterScreenState.kDeepPurple)

@@ -169,13 +169,25 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
       );
       return;
     }
-    if (newPass.length < 8) {
+    // เช็ครูปแบบรหัสผ่าน
+    // อย่างน้อย 8 ตัวอักษร, ตัวเลข, ตัวอักษรพิเศษ, ตัวพิมพ์ใหญ่-เล็ก
+    final passwordRegex = RegExp(
+      r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#\$%^&*(),.?":{}|<>]).{8,}$',
+    );
+
+    if (!passwordRegex.hasMatch(newPass)) {
       _shakeCtrl.forward(from: 0);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('รหัสผ่านใหม่อย่างน้อย 8 ตัวอักษร')),
+        const SnackBar(
+          content: Text(
+            'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร, ตัวเลข, ตัวอักษรพิเศษ และตัวพิมพ์ใหญ่-เล็ก',
+          ),
+        ),
       );
       return;
     }
+
+    // เช็คว่ารหัสผ่านตรงกับยืนยันรหัสผ่าน
     if (newPass != confirm) {
       _shakeCtrl.forward(from: 0);
       ScaffoldMessenger.of(
