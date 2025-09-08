@@ -1,4 +1,4 @@
-// ignore_for_file: non_constant_identifier_names, prefer_final_fields, deprecated_member_use
+// ignore_for_file: non_constant_identifier_names, prefer_final_fields, deprecated_member_use, use_build_context_synchronously
 
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -173,8 +173,12 @@ class _RegisterScreenState extends State<RegisterScreen>
       "username": _usernameCtrl.text,
       "password": _passwordCtrl.text,
     };
-    RegisFunctions.addRegistrant(data);
-    Navigator.pop(context);
+    final result = await RegisFunctions.addRegistrant(data);
+    if (result == 'success') {
+      Navigator.pop(context);
+    } else {
+      _showMsg(result);
+    }
   }
 
   void _showMsg(String msg) {

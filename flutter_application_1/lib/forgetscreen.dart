@@ -1,8 +1,9 @@
-// ignore_for_file: deprecated_member_use
+// ignore_for_file: deprecated_member_use, use_build_context_synchronously
 
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'resetpassword.dart';
+import 'services/forget_functions.dart';
 
 class ForgetScreen extends StatefulWidget {
   const ForgetScreen({super.key});
@@ -49,7 +50,7 @@ class _ForgetScreenState extends State<ForgetScreen>
     super.dispose();
   }
 
-  void _sendReset() {
+  void _sendReset() async {
     final email = emailController.text.trim();
     if (email.isEmpty) {
       ScaffoldMessenger.of(
@@ -57,9 +58,25 @@ class _ForgetScreenState extends State<ForgetScreen>
       ).showSnackBar(const SnackBar(content: Text("กรุณากรอกอีเมลก่อน")));
       return;
     }
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text("ส่งรหัสรีเซ็ตไปยัง $email")));
+
+    // เรียก async และ await
+    final result = await ForgetFunctions.sendResetEmail(email);
+
+    if (result == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("เกิดข้อผิดพลาดในการส่งอีเมล")),
+      );
+    } else if (result['success'] == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("ส่งรหัสรีเซ็ตไปยัง $email สำเร็จ")),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("ส่งอีเมลไม่สำเร็จ: ${result['error']}")),
+      );
+    }
+
+    emailController.clear();
   }
 
   @override
@@ -130,10 +147,9 @@ class _ForgetScreenState extends State<ForgetScreen>
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               ShaderMask(
-                                shaderCallback:
-                                    (r) => const LinearGradient(
-                                      colors: [kDeepPurple, kPurple],
-                                    ).createShader(r),
+                                shaderCallback: (r) => const LinearGradient(
+                                  colors: [kDeepPurple, kPurple],
+                                ).createShader(r),
                                 child: const Text(
                                   'ลืมรหัสผ่าน',
                                   style: TextStyle(

@@ -1,43 +1,33 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
-
 const pool = require('./Database');
 
+router.post('/registrant', async (req, res) => {
+  const { id_U, fname_U, lname_U, phone_U, email_U, username, password, role_U } = req.body;
 
+  try {
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-router.post('/registrant', (req, res) => {
+    pool.query('SELECT id_R FROM roles WHERE role_name = ?', [role_U], (err, results) => {
+      if (err) return res.status(500).json({ status: 'error', message: 'Role lookup error', error: err });
+      if (results.length === 0) return res.status(400).json({ status: 'error', message: 'Invalid role name' });
 
-  const data = {
-    "id_U": req.body.id_U,
-    "fname_U": req.body.fname_U,
-    "lname_U": req.body.lname_U,
-    "phone_U": req.body.phone_U,
-    "email_U": req.body.email_U,
-    "role_U": req.body.role_U,
-    "username": req.body.username,
-    "password": req.body.password,
-  };
+      const role_id = results[0].id_R;
+      const registrant = { id_U, fname_U, lname_U, phone_U, email_U, username, password_hash: hashedPassword, role_id };
 
-  bcrypt.hash(data.password, 10, (err, hashedPassword) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ status: 'error', message: 'Hashing error' });
-    }
-    pool.getConnection((err, connection) => {
-      if (err) throw err
-      console.log(`connected as id ${connection.threadId}`)
-      const registrant = { ...data, "password": hashedPassword };
-      connection.query('INSERT INTO users SET ?', registrant, (err, rows) => {
-        connection.release() // return the connection to pool
-        if (!err) {
-          res.send(rows)
-        } else {
-          console.log(err)
+      pool.query('INSERT INTO users SET ?', registrant, (err, rows) => {
+        if (err) {
+          console.error("Insert error:", err);
+          return res.status(500).json({ status: 'error', message: 'Insert error', error: err });
         }
-      })
-    })
-  })
-})
+
+        res.status(201).json({ status: 'success', message: 'User registered', data: rows });
+      });
+    });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: 'Server error', error: err });
+  }
+});
 
 module.exports = router;

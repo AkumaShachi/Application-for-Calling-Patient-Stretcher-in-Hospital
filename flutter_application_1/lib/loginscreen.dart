@@ -1,4 +1,4 @@
-// ignore_for_file: unused_field, deprecated_member_use, avoid_print
+// ignore_for_file: unused_field, deprecated_member_use, avoid_print, use_build_context_synchronously
 
 import 'dart:ui';
 import 'package:flutter/material.dart';

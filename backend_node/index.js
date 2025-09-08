@@ -5,6 +5,8 @@ const app = express();
 const pool = require('./src/Database'); 
 const registrantRouter = require('./src/registrant');
 const loginRouter = require('./src/login');
+const forgetRouter = require('./src/forget');
+const resetRounter = require('./src/reset');
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -13,15 +15,15 @@ app.use(cors());
 
 app.use(registrantRouter);
 app.use(loginRouter);
+app.use(forgetRouter);
+app.use(resetRounter);
 
 app.get('/', (req, res) => {
   pool.getConnection((err, connection) => {
     if (err) throw err
     console.log(`connected as id ${connection.threadId}`)
-
-    connection.query('SELECT * from users', (err, rows) => {
+    connection.query('SELECT * from usersregistrant', (err, rows) => {
       connection.release() // return the connection to pool
-
       if (!err) {
         res.send(rows)
       } else {

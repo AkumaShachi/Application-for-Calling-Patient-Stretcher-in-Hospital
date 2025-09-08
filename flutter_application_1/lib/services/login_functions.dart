@@ -1,9 +1,10 @@
 // ignore_for_file: avoid_print
 import 'dart:convert';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 class LoginFunctions {
-  static const baseUrl = "http://localhost:4000";
+  static final baseUrl = dotenv.env['BASE_URL'];
 
   // return เป็น Map<String, dynamic> หรือ null ถ้า failed
   static Future<Map<String, dynamic>?> loginUser(

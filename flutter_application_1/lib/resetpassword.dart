@@ -3,6 +3,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
+import 'services/reset_functions.dart';
+
 class ResetPasswordScreen extends StatefulWidget {
   const ResetPasswordScreen({super.key});
   @override
@@ -58,30 +60,26 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
       parent: _inCtrl,
       curve: const Interval(0.00, 0.25, curve: Curves.easeOut),
     );
-    _titleSlide = Tween<Offset>(
-      begin: const Offset(0, 0.20),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _inCtrl,
-        curve: const Interval(0.00, 0.25, curve: Curves.easeOutBack),
-      ),
-    );
+    _titleSlide = Tween<Offset>(begin: const Offset(0, 0.20), end: Offset.zero)
+        .animate(
+          CurvedAnimation(
+            parent: _inCtrl,
+            curve: const Interval(0.00, 0.25, curve: Curves.easeOutBack),
+          ),
+        );
 
     // Card
     _cardFade = CurvedAnimation(
       parent: _inCtrl,
       curve: const Interval(0.15, 0.40, curve: Curves.easeOut),
     );
-    _cardSlide = Tween<Offset>(
-      begin: const Offset(0, 0.15),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _inCtrl,
-        curve: const Interval(0.15, 0.40, curve: Curves.easeOutCubic),
-      ),
-    );
+    _cardSlide = Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero)
+        .animate(
+          CurvedAnimation(
+            parent: _inCtrl,
+            curve: const Interval(0.15, 0.40, curve: Curves.easeOutCubic),
+          ),
+        );
 
     // Fields (token, email, new, confirm) stagger
     _fieldFades = List.generate(
@@ -115,15 +113,13 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
       parent: _inCtrl,
       curve: const Interval(0.65, 0.95, curve: Curves.easeOut),
     );
-    _buttonSlide = Tween<Offset>(
-      begin: const Offset(0, 0.10),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _inCtrl,
-        curve: const Interval(0.65, 0.95, curve: Curves.easeOutBack),
-      ),
-    );
+    _buttonSlide = Tween<Offset>(begin: const Offset(0, 0.10), end: Offset.zero)
+        .animate(
+          CurvedAnimation(
+            parent: _inCtrl,
+            curve: const Interval(0.65, 0.95, curve: Curves.easeOutBack),
+          ),
+        );
 
     // Shake for error
     _shakeCtrl = AnimationController(
@@ -188,18 +184,38 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
       return;
     }
 
-    // mock loading
     setState(() => _loading = true);
-    await Future.delayed(const Duration(milliseconds: 900));
-    if (!mounted) return;
+
+    final resetpass = {
+      "token": token,
+      "email": email,
+      "new_password": newPass,
+      "confirm_password": confirm,
+    };
+
+    // await backend call
+    final result = await ResetFunctions.resetPassword(resetpass);
 
     setState(() => _loading = false);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('รีเซ็ตรหัสผ่านสำเร็จ')));
-    await Future.delayed(const Duration(milliseconds: 350));
+
     if (!mounted) return;
-    Navigator.pop(context);
+
+    if (result == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('เกิดข้อผิดพลาด โปรดลองอีกครั้ง')),
+      );
+    } else if (result['success'] == true) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('รีเซ็ตรหัสผ่านสำเร็จ')));
+      await Future.delayed(const Duration(milliseconds: 350));
+      if (!mounted) return;
+      Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('รีเซ็ตรหัสผ่านไม่สำเร็จ: ${result['error']}')),
+      );
+    }
   }
 
   @override
@@ -282,10 +298,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           ShaderMask(
-                            shaderCallback:
-                                (r) => const LinearGradient(
-                                  colors: [kDeepPurple, kPurple],
-                                ).createShader(r),
+                            shaderCallback: (r) => const LinearGradient(
+                              colors: [kDeepPurple, kPurple],
+                            ).createShader(r),
                             child: const Text(
                               'สร้างรหัสผ่านใหม่',
                               style: TextStyle(
@@ -369,10 +384,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                                     label: "รหัสผ่านใหม่",
                                     hint: "อย่างน้อย 8 ตัว",
                                     obscure: _obscureNew,
-                                    onToggle:
-                                        () => setState(
-                                          () => _obscureNew = !_obscureNew,
-                                        ),
+                                    onToggle: () => setState(
+                                      () => _obscureNew = !_obscureNew,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -388,12 +402,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                                     label: "ยืนยันรหัสผ่าน",
                                     hint: "กรอกรหัสผ่านอีกครั้ง",
                                     obscure: _obscureConfirm,
-                                    onToggle:
-                                        () => setState(
-                                          () =>
-                                              _obscureConfirm =
-                                                  !_obscureConfirm,
-                                        ),
+                                    onToggle: () => setState(
+                                      () => _obscureConfirm = !_obscureConfirm,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -688,25 +699,24 @@ class _GradientButtonState extends State<_GradientButton>
 
   @override
   Widget build(BuildContext context) {
-    final child =
-        widget.loading
-            ? const SizedBox(
-              height: 22,
-              width: 22,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.4,
-                color: Colors.white,
-              ),
-            )
-            : Text(
-              widget.text,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.2,
-                fontSize: 16,
-              ),
-            );
+    final child = widget.loading
+        ? const SizedBox(
+            height: 22,
+            width: 22,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.4,
+              color: Colors.white,
+            ),
+          )
+        : Text(
+            widget.text,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.2,
+              fontSize: 16,
+            ),
+          );
 
     return GestureDetector(
       onTapDown: (_) {
