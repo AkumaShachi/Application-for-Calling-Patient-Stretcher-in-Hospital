@@ -14,7 +14,6 @@ class ForgetFunctions {
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"user_email": email}),
       );
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         print('Reset email sent: $data');

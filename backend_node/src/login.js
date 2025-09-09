@@ -21,4 +21,23 @@ router.post('/login', (req, res) => {
   );
 });
 
+router.get('/user/:username', (req, res) => {
+  const username = req.params.username;
+
+  const sql = 'SELECT fname_U, lname_U FROM Users WHERE username = ? LIMIT 1';
+  
+  pool.query(sql, [username], (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+
+    if (results.length > 0) {
+      res.json(results[0]); // { fname_U: '...', lname_U: '...' }
+    } else {
+      res.status(404).json({ error: 'User not found' });
+    }
+  });
+});
+
 module.exports = router;

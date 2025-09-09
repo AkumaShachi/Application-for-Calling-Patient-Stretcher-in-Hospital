@@ -7,6 +7,9 @@ const registrantRouter = require('./src/registrant');
 const loginRouter = require('./src/login');
 const forgetRouter = require('./src/forget');
 const resetRounter = require('./src/reset');
+const addcaseRounter = require('./src/addcase');
+const stretcherRounter = require('./src/stretcher');
+const equipmentsRounter = require('./src/equipments');
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -17,7 +20,11 @@ app.use(registrantRouter);
 app.use(loginRouter);
 app.use(forgetRouter);
 app.use(resetRounter);
+app.use(addcaseRounter);
+app.use(stretcherRounter);
+app.use(equipmentsRounter);
 
+// Test route
 app.get('/', (req, res) => {
   pool.getConnection((err, connection) => {
     if (err) throw err

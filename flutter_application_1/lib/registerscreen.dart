@@ -130,6 +130,71 @@ class _RegisterScreenState extends State<RegisterScreen>
       _showMsg('กรุณากรอกข้อมูลให้ครบถ้วน');
       return;
     }
+
+    if (_passwordCtrl.text.length < 6) {
+      _shakeCtrl.forward(from: 0);
+      _showMsg('รหัสผ่านอย่างน้อย 6 ตัวอักษร');
+      return;
+    }
+
+    // ตรวจ token เพื่อเลือก role
+    if (_TokenCtrl.text == "123456") {
+      selectedRole = "porter"; // ตรงกับ DB
+    } else if (_TokenCtrl.text == "654321") {
+      selectedRole = "nurse"; // ตรงกับ DB
+    } else {
+      _shakeCtrl.forward(from: 0);
+      _showMsg('รหัสพนักงานไม่ถูกต้อง');
+      return;
+    }
+
+    // ตรวจรหัสผ่านตรงกัน
+    if (_passwordCtrl.text != _confirmCtrl.text) {
+      _shakeCtrl.forward(from: 0);
+      _showMsg('รหัสผ่านไม่ตรงกัน');
+      return;
+    }
+
+    // mock loading
+    setState(() => _loading = true);
+    await Future.delayed(const Duration(milliseconds: 1000));
+    if (!mounted) return;
+
+    setState(() => _loading = false);
+
+    var fullName = _nameCtrl.text.split(' ');
+
+    // data เบื้องต้น (user)
+    var data = {
+      "id_U": _idCtrl.text,
+      "fname_U": fullName[0],
+      "lname_U": fullName.length > 1 ? fullName[1] : '',
+      "phone_U": _phoneCtrl.text,
+      "email_U": _emailCtrl.text,
+      "role_U": selectedRole,
+      "username": _usernameCtrl.text,
+      "password": _passwordCtrl.text,
+    };
+
+    final result = await RegisFunctions.addRegistrant(data);
+    print(result);
+    if (result == 'success') {
+      _showMsg('ลงทะเบียนสำเร็จ!');
+      await Future.delayed(const Duration(milliseconds: 350));
+      if (!mounted) return;
+      Navigator.pop(context);
+    } else {
+      _showMsg(result);
+    }
+  }
+
+  Future<void> submit() async {
+    // ตรวจ form
+    if (!_formKey.currentState!.validate()) {
+      _shakeCtrl.forward(from: 0);
+      _showMsg('กรุณากรอกข้อมูลให้ครบถ้วน');
+      return;
+    }
     if (_passwordCtrl.text.length < 6) {
       _shakeCtrl.forward(from: 0);
       _showMsg('รหัสผ่านอย่างน้อย 6 ตัวอักษร');
@@ -173,7 +238,19 @@ class _RegisterScreenState extends State<RegisterScreen>
       "role_U": selectedRole,
       "username": _usernameCtrl.text,
       "password": _passwordCtrl.text,
+      // เพิ่มข้อมูลเฉพาะตาม role
+      if (selectedRole == "nurse") ...{
+        "license_number": '',
+        "department": '',
+        "position": '',
+      },
+      if (selectedRole == "porter") ...{
+        "shift": '',
+        "area": '',
+        "position": '',
+      },
     };
+
     final result = await RegisFunctions.addRegistrant(data);
     if (result == 'success') {
       Navigator.pop(context);

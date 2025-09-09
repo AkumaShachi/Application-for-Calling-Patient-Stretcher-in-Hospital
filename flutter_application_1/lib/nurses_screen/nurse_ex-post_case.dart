@@ -1,14 +1,99 @@
-// ignore_for_file: file_names
-
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../services/addcase_function.dart';
 
 class NurseExCaseScreen extends StatefulWidget {
-  const NurseExCaseScreen({super.key});
+  final String patientId;
+  final String patientType;
+  final String receivePoint;
+  final String sendPoint;
+  final String stretcherType;
+  final String equipments;
+  final String nurseName; // ✅ เพิ่มตรงนี้
+
+  const NurseExCaseScreen({
+    super.key,
+    required this.patientId,
+    required this.patientType,
+    required this.receivePoint,
+    required this.sendPoint,
+    required this.stretcherType,
+    required this.equipments,
+    required this.nurseName, // ✅ constructor
+  });
+
   @override
   State<NurseExCaseScreen> createState() => _NurseExCaseScreenState();
 }
 
 class _NurseExCaseScreenState extends State<NurseExCaseScreen> {
+  String userName = '';
+  String Name = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserName();
+  }
+
+  Future<void> _loadUserName() async {
+    final prefs = await SharedPreferences.getInstance();
+    final id = prefs.getString('id') ?? '';
+    final fname = prefs.getString('fname_U') ?? '';
+    final lname = prefs.getString('lname_U') ?? '';
+    setState(() {
+      userName = '$fname $lname';
+    });
+  }
+
+  void _confirmAndSave() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('ยืนยันการบันทึก'),
+          content: const Text('คุณแน่ใจว่าจะบันทึกข้อมูลเคสนี้หรือไม่?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context), // ปิด popup
+              child: const Text('ยกเลิก'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // ปิด popup ก่อน
+                _saveCase(); // เรียกบันทึกเคส
+              },
+              child: const Text('บันทึก'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _saveCase() async {
+    final prefs = await SharedPreferences.getInstance();
+    final id = prefs.getString('id') ?? '';
+    // เตรียมข้อมูลเคสเป็น Map
+    final caseData = {
+      'patientId': widget.patientId,
+      'patientType': widget.patientType,
+      'roomFrom': widget.receivePoint,
+      'roomTo': widget.sendPoint,
+      'stretcherTypeId': widget.stretcherType,
+      'requestedBy': id, // ใช้ id จาก SharedPreferences
+      'equipmentIds': widget.equipments,
+    };
+    await AddcaseFunction.saveCase(caseData);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('บันทึกข้อมูลเคสเรียบร้อยแล้ว')),
+      );
+    }
+  }
+  // เรียกใช้ AddcaseFunction.saveCase
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -18,28 +103,10 @@ class _NurseExCaseScreenState extends State<NurseExCaseScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         foregroundColor: Colors.black,
-        leading: TextButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
-          child: const Text(
-            'แก้ไข',
-            style: TextStyle(color: Colors.blue),
-            overflow: TextOverflow.visible,
-            softWrap: false,
-          ),
-        ),
         actions: [
           TextButton(
-            onPressed: () {
-              // save logic here
-            },
-            child: const Text(
-              'ยืนยัน',
-              style: TextStyle(color: Colors.blue),
-              overflow: TextOverflow.visible,
-              softWrap: false,
-            ),
+            onPressed: _confirmAndSave, // ฟังก์ชันเรียก popup
+            child: const Text('บันทึก', style: TextStyle(color: Colors.blue)),
           ),
         ],
       ),
@@ -60,8 +127,6 @@ class _NurseExCaseScreenState extends State<NurseExCaseScreen> {
                 style: TextStyle(fontSize: 14),
               ),
             ),
-
-            // ข้อมูลผู้ใช้และเคส
             Container(
               width: double.infinity,
               decoration: BoxDecoration(
@@ -76,19 +141,15 @@ class _NurseExCaseScreenState extends State<NurseExCaseScreen> {
                       horizontal: 12,
                       vertical: 8,
                     ),
-                    decoration: BoxDecoration(
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(12),
-                        topRight: Radius.circular(12),
-                      ),
-                    ),
                     child: Row(
-                      children: const [
-                        Icon(Icons.medical_services, color: Colors.blue),
-                        SizedBox(width: 8),
+                      children: [
+                        const Icon(Icons.medical_services, color: Colors.blue),
+                        const SizedBox(width: 8),
                         Text(
-                          'พยาบาล สมศรี',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                          widget.nurseName.isEmpty
+                              ? 'พยาบาล'
+                              : widget.nurseName, // ✅ ใช้จาก constructor
+                          style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
@@ -100,16 +161,25 @@ class _NurseExCaseScreenState extends State<NurseExCaseScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _caseItem(Icons.badge, 'หมายเลขผู้ป่วย : GE174'),
-                        _caseItem(Icons.person, 'ประเภทผู้ป่วย : ผู้ป่วยใน'),
+                        _caseItem(
+                          Icons.badge,
+                          'หมายเลขผู้ป่วย : ${widget.patientId}',
+                        ),
+                        _caseItem(
+                          Icons.person,
+                          'ประเภทผู้ป่วย : ${widget.patientType}',
+                        ),
                         _caseItem(
                           Icons.location_on,
-                          'จุดรับ-ส่ง : Ward 4C - ER',
+                          'จุดรับ-ส่ง : ${widget.receivePoint} - ${widget.sendPoint}',
                         ),
-                        _caseItem(Icons.bed, 'ประเภทเปล : เปลนอน'),
+                        _caseItem(
+                          Icons.bed,
+                          'ประเภทเปล : ${widget.stretcherType}',
+                        ),
                         _caseItem(
                           Icons.list,
-                          'อุปกรณ์เสริม : ออกซิเจน, เครื่องวัดความดัน',
+                          'อุปกรณ์เสริม : ${widget.equipments}',
                         ),
                       ],
                     ),
@@ -123,7 +193,6 @@ class _NurseExCaseScreenState extends State<NurseExCaseScreen> {
     );
   }
 
-  // Helper สำหรับแสดงข้อมูลเคสแต่ละบรรทัด
   Widget _caseItem(IconData icon, String text) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),

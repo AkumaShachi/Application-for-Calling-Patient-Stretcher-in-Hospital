@@ -7,7 +7,9 @@ import 'nurses_screen/nurse_list_case.dart';
 import 'porters_screen/porter_list_case.dart';
 import 'registerscreen.dart';
 import 'forgetscreen.dart';
+
 import 'services/login_functions.dart';
+import 'services/user_prefs.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -75,7 +77,14 @@ class _LoginScreenState extends State<LoginScreen>
     var loginResult = await LoginFunctions.loginUser(username, password);
 
     if (loginResult?['status'] == 'success') {
+      var userInfo = await LoginFunctions.getUserInfo(username);
+      var id = username;
+      var fname = userInfo?['fname_U'] ?? '';
+      var lname = userInfo?['lname_U'] ?? '';
       var role = loginResult?['role'];
+
+      await UserPreferences.setUser(id, fname, lname);
+
       if (role == 'nurse') {
         Navigator.push(
           context,

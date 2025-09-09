@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'loginscreen.dart';
+import 'nurses_screen/nurse_add_case.dart';
+import 'services/user_prefs.dart';
 
 void main() async {
   await dotenv.load(fileName: "assets/.env");
+  await UserPreferences.init();
   runApp(const MyApp());
 }
 
@@ -16,6 +19,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'AppName',
       home: LoginScreen(),
+      // home: NurseAddCaseScreen(),
       debugShowCheckedModeBanner: false, //บอมหัวควย
     );
   }

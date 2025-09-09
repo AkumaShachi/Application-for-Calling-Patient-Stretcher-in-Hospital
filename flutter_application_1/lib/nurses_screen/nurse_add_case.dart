@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
-
+import '../services/getEquipments.dart';
+import '../services/getStretcher.dart';
+import '../services/user_prefs.dart';
 import 'nurse_ex-post_case.dart';
 
 class NurseAddCaseScreen extends StatefulWidget {
@@ -18,8 +20,14 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen> {
   final TextEditingController stretcherTypeController = TextEditingController();
   final TextEditingController equipmentController = TextEditingController();
 
+  List<int> selectedEquipmentIds = []; // รายการ ID ของอุปกรณ์ที่เลือก
+  int? selectedStretcherTypeId; // ID ของประเภทเปลที่เลือก (nullable)
+  String stretcherTypeName = ''; // ชื่อประเภทเปล
+  String equipmentNames = ''; // ชื่ออุปกรณ์
+
   @override
   void dispose() {
+    // กำจัด controller เมื่อ widget ถูกทำลาย
     patientIdController.dispose();
     patientTypeController.dispose();
     receivePointController.dispose();
@@ -29,18 +37,55 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen> {
     super.dispose();
   }
 
+  void _validateAndSubmit() async {
+    if (patientIdController.text.isEmpty ||
+        patientTypeController.text.isEmpty ||
+        receivePointController.text.isEmpty ||
+        sendPointController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('กรุณากรอกข้อมูลให้ครบถ้วน')),
+      );
+      return;
+    } else if (selectedStretcherTypeId == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('กรุณาเลือกประเภทเปล')));
+      return;
+    }
+
+    // ✅ ดึงชื่อผู้ใช้จาก SharedPreferences ผ่าน UserPreferences
+    final fname = UserPreferences.fname ?? '';
+    final lname = UserPreferences.lname ?? '';
+    final userName = '$fname $lname';
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => NurseExCaseScreen(
+          patientId: patientIdController.text,
+          patientType: patientTypeController.text,
+          receivePoint: receivePointController.text,
+          sendPoint: sendPointController.text,
+          stretcherType: stretcherTypeName,
+          equipments: equipmentNames,
+          nurseName: userName, // เพิ่มพารามิเตอร์ nurseName
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('เพิ่มเคสใหม่'),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        elevation: 0,
-        foregroundColor: Colors.black,
+        title: const Text('เพิ่มเคสใหม่'), // หัวข้อแอพ
+        centerTitle: true, // จัดหัวข้อตรงกลาง
+        backgroundColor: Colors.white, // สีพื้นหลัง
+        elevation: 0, // เงา
+        foregroundColor: Colors.black, // สีตัวอักษร
         leading: TextButton(
           onPressed: () {
-            Navigator.pop(context);
+            Navigator.pop(context); // กลับไปหน้าก่อนหน้า
           },
           child: const Text(
             'ยกเลิก',
@@ -51,20 +96,8 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const NurseExCaseScreen(),
-                ),
-              );
-            },
-            child: const Text(
-              'บันทึก',
-              style: TextStyle(color: Colors.blue),
-              overflow: TextOverflow.visible, // ไม่ตัดคำ
-              softWrap: false, // ไม่ขึ้นบรรทัดใหม่
-            ),
+            onPressed: _validateAndSubmit, // ใช้ method ที่เราแยกไว้
+            child: const Text('บันทึก', style: TextStyle(color: Colors.blue)),
           ),
         ],
       ),
@@ -108,8 +141,8 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen> {
                       ),
                     ],
                   ),
-                  _inputItem(Icons.bed, 'ประเภทเปล', stretcherTypeController),
-                  _inputItem(Icons.list, 'อุปกรณ์เสริม', equipmentController),
+                  _stretcherTypeSelector(), // ตัวเลือกประเภทเปล
+                  _equipmentSelector(), // ตัวเลือกอุปกรณ์
                 ],
               ),
             ),
@@ -141,6 +174,7 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen> {
     );
   }
 
+  // สร้างช่อง input
   Widget _inputItem(
     IconData icon,
     String label,
@@ -169,17 +203,187 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen> {
                 ),
               ),
               onChanged: (_) => setState(() {}),
-              validator:
-                  (value) =>
-                      value == null || value.isEmpty
-                          ? 'กรุณากรอก $label'
-                          : null,
+              validator: (value) =>
+                  value == null || value.isEmpty ? 'กรุณากรอก $label' : null,
             ),
           ),
           const SizedBox(width: 8),
           if (controller.text.isNotEmpty)
             const Icon(Icons.check, color: Colors.green),
         ],
+      ),
+    );
+  }
+
+  // ตัวเลือกประเภทเปล
+  Widget _stretcherTypeSelector() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: ElevatedButton(
+        onPressed: () async {
+          final selected = await showModalBottomSheet<Map<String, dynamic>>(
+            context: context,
+            builder: (context) {
+              return FutureBuilder<List<Map<String, dynamic>>>(
+                future: GetStretcher.getStretcherTypes(), // ดึงข้อมูลประเภทเปล
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: CircularProgressIndicator(),
+                    ); // แสดง loading
+                  }
+                  if (snapshot.hasError || snapshot.data == null) {
+                    return const Center(
+                      child: Text('ไม่สามารถโหลดข้อมูลได้'),
+                    ); // แสดงข้อผิดพลาด
+                  }
+                  final types = snapshot.data!; // ข้อมูลประเภทเปล
+                  return ListView.builder(
+                    itemCount: types.length,
+                    itemBuilder: (context, index) {
+                      final type = types[index];
+                      return ListTile(
+                        title: Text(type['type_name']), // ชื่อประเภทเปล
+                        subtitle: Text('จำนวน: ${type['quantity']}'), // จำนวน
+                        onTap: () =>
+                            Navigator.pop(context, type), // เลือกประเภทเปล
+                      );
+                    },
+                  );
+                },
+              );
+            },
+          );
+
+          if (selected != null) {
+            setState(() {
+              selectedStretcherTypeId =
+                  selected['id']; // กำหนด ID ประเภทเปลที่เลือก
+              stretcherTypeName = selected['type_name']; // กำหนดชื่อประเภทเปล
+            });
+          }
+        },
+        child: Row(
+          children: [
+            const Icon(Icons.bed),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                stretcherTypeName.isEmpty
+                    ? 'เลือกประเภทเปล'
+                    : stretcherTypeName, // แสดงชื่อประเภทเปลที่เลือก
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _equipmentSelector() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: ElevatedButton(
+        onPressed: () async {
+          final selected =
+              await showModalBottomSheet<List<Map<String, dynamic>>>(
+                context: context,
+                builder: (context) {
+                  return FutureBuilder<List<Map<String, dynamic>>>(
+                    future: GetEquipments.getEquipments(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      if (snapshot.hasError || snapshot.data == null) {
+                        return const Center(
+                          child: Text('ไม่สามารถโหลดข้อมูลได้'),
+                        );
+                      }
+
+                      final equipment = snapshot.data!;
+                      List<int> tempSelected = List.from(selectedEquipmentIds);
+
+                      // เพิ่ม StatefulBuilder รอบ Column
+                      return StatefulBuilder(
+                        builder: (context, setModalState) {
+                          return SizedBox(
+                            height: 400, // กำหนดความสูงของ modal
+                            child: Column(
+                              children: [
+                                Expanded(
+                                  child: ListView.builder(
+                                    itemCount: equipment.length,
+                                    itemBuilder: (context, index) {
+                                      final eq = equipment[index];
+                                      final isSelected = tempSelected.contains(
+                                        eq['id'],
+                                      );
+                                      return CheckboxListTile(
+                                        title: Text(eq['equipment_name']),
+                                        subtitle: Text(
+                                          'จำนวน: ${eq['quantity']}',
+                                        ),
+                                        value: isSelected,
+                                        onChanged: (value) {
+                                          setModalState(() {
+                                            if (value == true) {
+                                              tempSelected.add(eq['id']);
+                                            } else {
+                                              tempSelected.remove(eq['id']);
+                                            }
+                                          });
+                                        },
+                                      );
+                                    },
+                                  ),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    Navigator.pop(
+                                      context,
+                                      equipment
+                                          .where(
+                                            (e) =>
+                                                tempSelected.contains(e['id']),
+                                          )
+                                          .toList(),
+                                    );
+                                  },
+                                  child: const Text('ตกลง'),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  );
+                },
+              );
+
+          if (selected != null) {
+            setState(() {
+              selectedEquipmentIds = selected
+                  .map((e) => e['id'] as int)
+                  .toList();
+              equipmentNames = selected
+                  .map((e) => e['equipment_name'])
+                  .join(', ');
+            });
+          }
+        },
+        child: Row(
+          children: [
+            const Icon(Icons.list),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                equipmentNames.isEmpty ? 'เลือกอุปกรณ์เสริม' : equipmentNames,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
