@@ -1,171 +1,134 @@
 // ignore_for_file: library_private_types_in_public_api, sized_box_for_whitespace, avoid_print
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../loginscreen.dart';
+import '../services/getcase_function.dart';
+import '../services/recordhistory_function.dart';
+import '../services/ีupdatecase_function.dart';
 import 'porter_case_detail.dart';
 
 class PorterCaseListScreen extends StatefulWidget {
   const PorterCaseListScreen({super.key});
 
   @override
-  _PorterCaseListScreeState createState() => _PorterCaseListScreeState();
+  _PorterCaseListScreenState createState() => _PorterCaseListScreenState();
 }
 
-class _PorterCaseListScreeState extends State<PorterCaseListScreen> {
+class _PorterCaseListScreenState extends State<PorterCaseListScreen> {
   int selectedTabIndex = 0;
-  final List<String> tabs = [
-    'ทั้งหมด',
-    'รอรับเคส',
-    'กำลังดำเนินการ',
-    'เสร็จสิ้น',
-  ];
-  final List<Map<String, dynamic>> allCases = [
-    {
-      'id': 'GE174',
-      'type': 'ผู้ป่วยฉุกเฉิน',
-      'location': 'ตึก OPD - Ward 5A',
-      'floor': 'ชั้น 5',
-      'status': 'รอรับเคส',
-      'time': '10:30',
-    },
-    {
-      'id': 'GE175',
-      'type': 'นอนพัก',
-      'location': 'ตึก OPD - Ward 3A',
-      'floor': 'ชั้น 3',
-      'status': 'รอรับเคส',
-      'time': '11:15',
-    },
-    {
-      'id': 'ER150',
-      'type': 'ฉุกเฉิน',
-      'location': 'ห้องฉุกเฉิน A2',
-      'floor': 'ชั้น 1',
-      'status': 'กำลังดำเนินการ',
-      'time': '10:30',
-    },
-    {
-      'id': 'ER151',
-      'type': 'ฉุกเฉิน',
-      'location': 'ห้องฉุกเฉิน A1',
-      'floor': 'ชั้น 1',
-      'status': 'กำลังดำเนินการ',
-      'time': '11:15',
-    },
-    {
-      'id': 'GE174',
-      'type': 'ผู้ป่วยฉุกเฉิน',
-      'location': 'ตึก OPD - Ward 5A',
-      'floor': 'ชั้น 5',
-      'status': 'รอรับเคส',
-      'time': '10:30',
-    },
-    {
-      'id': 'GE175',
-      'type': 'นอนพัก',
-      'location': 'ตึก OPD - Ward 3A',
-      'floor': 'ชั้น 3',
-      'status': 'รอรับเคส',
-      'time': '11:15',
-    },
-    {
-      'id': 'ER150',
-      'type': 'ฉุกเฉิน',
-      'location': 'ห้องฉุกเฉิน A2',
-      'floor': 'ชั้น 1',
-      'status': 'กำลังดำเนินการ',
-      'time': '10:30',
-    },
-    {
-      'id': 'ER151',
-      'type': 'ฉุกเฉิน',
-      'location': 'ห้องฉุกเฉิน A1',
-      'floor': 'ชั้น 1',
-      'status': 'กำลังดำเนินการ',
-      'time': '11:15',
-    },
-    {
-      'id': 'GE174',
-      'type': 'ผู้ป่วยฉุกเฉิน',
-      'location': 'ตึก OPD - Ward 5A',
-      'floor': 'ชั้น 5',
-      'status': 'รอรับเคส',
-      'time': '10:30',
-    },
-    {
-      'id': 'GE175',
-      'type': 'นอนพัก',
-      'location': 'ตึก OPD - Ward 3A',
-      'floor': 'ชั้น 3',
-      'status': 'รอรับเคส',
-      'time': '11:15',
-    },
-    {
-      'id': 'ER150',
-      'type': 'ฉุกเฉิน',
-      'location': 'ห้องฉุกเฉิน A2',
-      'floor': 'ชั้น 1',
-      'status': 'กำลังดำเนินการ',
-      'time': '10:30',
-    },
-    {
-      'id': 'ER151',
-      'type': 'ฉุกเฉิน',
-      'location': 'ห้องฉุกเฉิน A1',
-      'floor': 'ชั้น 1',
-      'status': 'กำลังดำเนินการ',
-      'time': '11:15',
-    },
-    {
-      'id': 'GE174',
-      'type': 'ผู้ป่วยฉุกเฉิน',
-      'location': 'ตึก OPD - Ward 5A',
-      'floor': 'ชั้น 5',
-      'status': 'รอรับเคส',
-      'time': '10:30',
-    },
-    {
-      'id': 'GE175',
-      'type': 'นอนพัก',
-      'location': 'ตึก OPD - Ward 3A',
-      'floor': 'ชั้น 3',
-      'status': 'รอรับเคส',
-      'time': '11:15',
-    },
-    {
-      'id': 'ER150',
-      'type': 'ฉุกเฉิน',
-      'location': 'ห้องฉุกเฉิน A2',
-      'floor': 'ชั้น 1',
-      'status': 'กำลังดำเนินการ',
-      'time': '10:30',
-    },
-    {
-      'id': 'ER151',
-      'type': 'ฉุกเฉิน',
-      'location': 'ห้องฉุกเฉิน A1',
-      'floor': 'ชั้น 1',
-      'status': 'กำลังดำเนินการ',
-      'time': '11:15',
-    },
-    {
-      'id': 'ER151',
-      'type': 'ฉุกเฉิน',
-      'location': 'ห้องฉุกเฉิน A1',
-      'floor': 'ชั้น 1',
-      'status': 'เสร็จสิ้น',
-      'time': '11:15',
-    },
-  ];
+  String fname = '';
+  String lname = '';
+  String username = '';
+  List<Map<String, dynamic>> cases = [];
+
+  final List<String> tabs = ['ทั้งหมด', 'pending', 'in_progress', 'completed'];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserInfo();
+  }
+
+  Future<void> _loadUserInfo() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      fname = prefs.getString('fname_U') ?? '';
+      lname = prefs.getString('lname_U') ?? '';
+      username = prefs.getString('id') ?? '';
+    });
+    loadCases();
+  }
+
+  void loadCases() async {
+    if (username.isEmpty) return;
+    print('🔹 Loading cases for tab: ${tabs[selectedTabIndex]}');
+
+    try {
+      List<Map<String, dynamic>> fetchedCases = [];
+
+      switch (tabs[selectedTabIndex]) {
+        case 'ทั้งหมด':
+          var activeCases = await GetcaseFunction.fetchAllCasesPorter();
+          fetchedCases = activeCases
+              .where((c) => c['status'] != 'completed')
+              .toList();
+          break;
+
+        case 'pending':
+        case 'in_progress':
+          var myCases = await GetcaseFunction.fetchMyCasesPorter(username);
+          fetchedCases = myCases
+              .where((c) => c['status'] == tabs[selectedTabIndex])
+              .toList();
+          break;
+
+        case 'completed':
+          fetchedCases = await RecordhistoryFunction.fetchCompletedCasesPorter(
+            username,
+          );
+          fetchedCases = fetchedCases.map((c) {
+            c['assigned_porter_username'] =
+                c['assigned_porter_username'] ?? username;
+            return c;
+          }).toList();
+          break;
+      }
+
+      // 🔹 Debug: print Map ของแต่ละเคส
+      for (var c in fetchedCases) {
+        print('🔹 Case Map: $c');
+      }
+
+      print('🔹 Total fetched cases: ${fetchedCases.length}');
+      setState(() {
+        cases = fetchedCases;
+      });
+    } catch (e) {
+      print('❌ Error loading cases: $e');
+    }
+  }
+
+  void handleCaseAction(Map<String, dynamic> item) async {
+    final currentStatus = item['status']?.toString() ?? 'pending';
+    final newStatus = currentStatus == 'pending' ? 'in_progress' : 'completed';
+
+    try {
+      final success = await UpdateCase.updateStatus(
+        item['case_id'].toString(),
+        newStatus,
+        assignedPorter: username,
+      );
+
+      if (success) {
+        // ✅ อัปเดต status ของ item ใน memory เลย ไม่ต้องโหลดใหม่ทั้งหมด
+        setState(() {
+          item['status'] = newStatus;
+        });
+      }
+    } catch (e) {
+      print('❌ Error updating case: $e');
+    }
+  }
 
   List<Map<String, dynamic>> get filteredCases {
-    if (selectedTabIndex == 0) {
-      // "ทั้งหมด" ยกเว้นสถานะ "เสร็จสิ้น"
-      return allCases.where((c) => c['status'] != 'เสร็จสิ้น').toList();
-    }
-    return allCases
-        .where((c) => c['status'] == tabs[selectedTabIndex])
-        .toList();
+    final selectedStatus = tabs[selectedTabIndex];
+
+    return cases.where((c) {
+      final status = c['status']?.toString() ?? '';
+      final assignedPorter = c['assigned_porter_username']?.toString() ?? '';
+
+      if (selectedStatus == 'ทั้งหมด') {
+        return status != ''; // เอาทุกเคส
+      } else if (selectedStatus == 'completed') {
+        return status == 'completed' && assignedPorter == username;
+      } else {
+        return status == selectedStatus &&
+            (selectedStatus == 'in_progress'
+                ? assignedPorter == username
+                : true);
+      }
+    }).toList();
   }
 
   @override
@@ -175,49 +138,43 @@ class _PorterCaseListScreeState extends State<PorterCaseListScreen> {
         title: Text('รายการเคส'),
         automaticallyImplyLeading: false,
       ),
-      endDrawer: Container(
-        width: MediaQuery.of(context).size.width * 0.67, // 2/3 หน้าจอ
-        child: Drawer(
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              // แทนที่จะใช้ DrawerHeader ลองใช้ Container + Padding
-              Container(
-                color: Colors.white,
-                padding: EdgeInsets.symmetric(vertical: 20),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 175,
-                      height: 175,
-                      decoration: BoxDecoration(
-                        color: Colors.blue,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(Icons.person, size: 80, color: Colors.white),
+      endDrawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            Container(
+              color: Colors.white,
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Column(
+                children: [
+                  Container(
+                    width: 175,
+                    height: 175,
+                    decoration: BoxDecoration(
+                      color: Colors.blue,
+                      shape: BoxShape.circle,
                     ),
-                    SizedBox(height: 20),
-                    ListTile(
-                      leading: Icon(Icons.person),
-                      title: Text('ชื่อผู้ใช้: พนักงานเปลคนไข้'),
-                    ),
-                    ListTile(
-                      leading: Icon(Icons.logout),
-                      title: Text('ออกจากระบบ'),
-                      onTap: () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => LoginScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
+                    child: Icon(Icons.person, size: 80, color: Colors.white),
+                  ),
+                  SizedBox(height: 20),
+                  ListTile(
+                    leading: const Icon(Icons.person),
+                    title: Text('ชื่อผู้ใช้: $fname $lname'),
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.logout),
+                    title: Text('ออกจากระบบ'),
+                    onTap: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (context) => LoginScreen()),
+                      );
+                    },
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
       body: Column(
@@ -236,8 +193,10 @@ class _PorterCaseListScreeState extends State<PorterCaseListScreen> {
                       setState(() {
                         selectedTabIndex = index;
                       });
+                      loadCases(); // โหลดเคสใหม่ตาม tab
                     },
-                    child: Container(
+                    child: AnimatedContainer(
+                      duration: Duration(milliseconds: 300),
                       padding: EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 8,
@@ -247,7 +206,7 @@ class _PorterCaseListScreeState extends State<PorterCaseListScreen> {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        tabs[index],
+                        index == 0 ? 'ทั้งหมด' : tabs[index],
                         style: TextStyle(
                           color: isSelected ? Colors.white : Colors.black87,
                           fontWeight: FontWeight.w500,
@@ -265,7 +224,11 @@ class _PorterCaseListScreeState extends State<PorterCaseListScreen> {
               itemCount: filteredCases.length,
               itemBuilder: (context, index) {
                 final item = filteredCases[index];
-                return buildCaseCard(item);
+                return AnimatedCaseCard(
+                  item: item,
+                  username: username,
+                  onAction: handleCaseAction, // ใช้ฟังก์ชันเดียว
+                );
               },
             ),
           ),
@@ -273,87 +236,139 @@ class _PorterCaseListScreeState extends State<PorterCaseListScreen> {
       ),
     );
   }
+}
 
-  Widget buildCaseCard(Map<String, dynamic> item) {
-    final isWaiting = item['status'] == 'รอรับเคส';
-    final isProcessing = item['status'] == 'กำลังดำเนินการ';
-    final isFinishing = item['status'] == 'เสร็จสิ้น';
+class AnimatedCaseCard extends StatelessWidget {
+  final Map<String, dynamic> item;
+  final String username;
+  final void Function(Map<String, dynamic> item)?
+  onAction; // callback เวลากดปุ่ม
 
-    return Card(
-      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: EdgeInsets.all(16),
+  const AnimatedCaseCard({
+    required this.item,
+    required this.username,
+    this.onAction,
+    super.key,
+  });
+
+  String timeAgo(String createdAt) {
+    final createdTime = DateTime.parse(createdAt).toLocal();
+    final now = DateTime.now();
+    final diff = now.difference(createdTime);
+
+    if (diff.inSeconds < 60) return '${diff.inSeconds}s';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m';
+    if (diff.inHours < 24) return '${diff.inHours}h';
+    if (diff.inDays < 7) return '${diff.inDays}d';
+    return '${createdTime.day}/${createdTime.month}/${createdTime.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // ✅ อ่านค่า status ตรงจาก item ทุกครั้ง ไม่เก็บค้างใน state
+    final status = item['status']?.toString() ?? 'pending';
+    final isWaiting = status == 'pending';
+    final isProcessing = status == 'in_progress';
+    final isFinishing = status == 'completed';
+
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 500),
+      opacity: 1.0,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 6,
+              offset: Offset(0, 3),
+            ),
+          ],
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// แถวบน: สถานะและเวลา
+            // 🔹 แถวบน: สถานะ + เวลา
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
-                    color:
-                        isWaiting
-                            ? Colors.pink.shade100
-                            : isFinishing
-                            ? Colors.green.shade100
-                            : Colors.yellow.shade100,
+                    color: isWaiting
+                        ? Colors.pink.shade100
+                        : isProcessing
+                        ? Colors.yellow.shade100
+                        : Colors.green.shade100,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Text(
-                    item['status'],
+                    isWaiting
+                        ? 'รอดำเนินการ'
+                        : isProcessing
+                        ? 'กำลังดำเนินการ'
+                        : 'เสร็จสิ้น',
                     style: TextStyle(
-                      color:
-                          isWaiting
-                              ? Colors.red
-                              : isFinishing
-                              ? Colors.green
-                              : Colors.yellow.shade700,
+                      color: isWaiting
+                          ? Colors.red
+                          : isProcessing
+                          ? Colors.orange
+                          : Colors.green.shade700,
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
                 Text(
-                  item['time'],
+                  item['created_at'] != null
+                      ? timeAgo(item['created_at'])
+                      : '-',
                   style: TextStyle(color: Colors.grey.shade600),
                 ),
               ],
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
 
-            /// รหัสเคส
+            // 🔹 รหัสผู้ป่วย
             Text(
-              item['id'],
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              item['patient_id']?.toString() ?? 'ไม่มีรหัส',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            SizedBox(height: 4),
+            const SizedBox(height: 4),
 
-            /// รายละเอียดเคส
+            // 🔹 ประเภทผู้ป่วย
             Text.rich(
               TextSpan(
                 children: [
-                  TextSpan(
+                  const TextSpan(
                     text: 'ประเภทผู้ป่วย: ',
                     style: TextStyle(color: Colors.black54),
                   ),
                   TextSpan(
-                    text: item['type'],
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    text: item['patient_type'] ?? '-',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
             ),
-            SizedBox(height: 2),
-            Text(
-              'จุดรับ-ส่ง: ${item['location']} - ${item['floor']}',
-              style: TextStyle(color: Colors.black87),
-            ),
-            SizedBox(height: 8),
+            const SizedBox(height: 2),
 
-            /// แถวล่าง: ลิงก์ดูรายละเอียด + ปุ่ม
+            // 🔹 จุดรับ-ส่ง
+            Text(
+              'จุดรับ-ส่ง: ${item['room_from'] ?? '-'} - ${item['room_to'] ?? '-'}',
+              style: const TextStyle(color: Colors.black87),
+            ),
+
+            const SizedBox(height: 12),
+
+            // 🔹 ปุ่ม Action (ตามสถานะ)
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -362,37 +377,31 @@ class _PorterCaseListScreeState extends State<PorterCaseListScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => PorterCaseDetailScreen(),
+                        builder: (context) =>
+                            PorterCaseDetailScreen(item: item),
                       ),
                     );
-                    print('ดูรายละเอียด ${item['id']}');
                   },
                   child: Text(
                     'ดูรายละเอียด',
                     style: TextStyle(color: Colors.blue),
                   ),
                 ),
-                if (isWaiting)
+
+                if (!isFinishing)
                   ElevatedButton(
+                    onPressed: () async {
+                      if (onAction != null) {
+                        onAction!(item);
+                      }
+                    },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
+                      backgroundColor: isWaiting ? Colors.blue : Colors.green,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    onPressed: () {},
-                    child: Text('รับเคส'),
-                  ),
-                if (isProcessing)
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    onPressed: () {},
-                    child: Text('เสร็จสิ้น'),
+                    child: Text(isWaiting ? 'รับเคส' : 'เสร็จสิ้น'),
                   ),
               ],
             ),

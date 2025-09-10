@@ -75,7 +75,7 @@ class _LoginScreenState extends State<LoginScreen>
       return;
     }
     var loginResult = await LoginFunctions.loginUser(username, password);
-
+    print(loginResult);
     if (loginResult?['status'] == 'success') {
       var userInfo = await LoginFunctions.getUserInfo(username);
       var id = username;

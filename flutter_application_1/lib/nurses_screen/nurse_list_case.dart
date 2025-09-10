@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import '../loginscreen.dart';
+import '../services/getcase_function.dart';
 import 'nurse_add_case.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class NurseListCaseScreen extends StatefulWidget {
   const NurseListCaseScreen({super.key});
+
   @override
   State<NurseListCaseScreen> createState() => _NurseListCaseScreenState();
 }
@@ -14,15 +16,35 @@ class NurseListCaseScreen extends StatefulWidget {
 class _NurseListCaseScreenState extends State<NurseListCaseScreen>
     with TickerProviderStateMixin {
   late TabController _tabController;
+  late Timer _timer;
 
   String fname = '';
   String lname = '';
+  String username = '';
+
+  List<Map<String, dynamic>> allCases = [];
+  List<Map<String, dynamic>> myCases = [];
+  bool loadingAll = true;
+  bool loadingMy = true;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _loadUserInfo(); // โหลดชื่อผู้ใช้
+    _loadUserInfo();
+    _fetchCases(); // เรียกครั้งแรกตอนโหลดหน้าจอ
+
+    // ตั้ง Timer ให้ fetch ข้อมูลทุก 5 วินาทีเพื่อ realtime
+    _timer = Timer.periodic(Duration(seconds: 5), (timer) {
+      _fetchCases();
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    _tabController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadUserInfo() async {
@@ -30,104 +52,46 @@ class _NurseListCaseScreenState extends State<NurseListCaseScreen>
     setState(() {
       fname = prefs.getString('fname_U') ?? '';
       lname = prefs.getString('lname_U') ?? '';
+      username = prefs.getString('id') ?? '';
     });
+    print('Loaded username: $username');
   }
 
-  final List<Map<String, String>> allCases = [
-    {
-      "nurse": "พยาบาล สมศรี",
-      "time": "2 นาทีที่แล้ว",
-      "caseId": "GE174",
-      "type": "ผู้ป่วยฉุกเฉิน",
-      "location": "ER - Ward 5B",
-      "transferType": "เปลนอน",
-      "equipment": "ออกซิเจน, เครื่องวัดความดัน",
-    },
-    {
-      "nurse": "พยาบาล วิภา",
-      "time": "15 นาทีที่แล้ว",
-      "caseId": "GE175",
-      "type": "ผู้ป่วยทั่วไป",
-      "location": "OPD - Ward 3A",
-      "transferType": "เปลนั่ง",
-      "equipment": "ไม่มี",
-    },
-    {
-      "nurse": "พยาบาล รัตนา",
-      "time": "1 ชั่วโมงที่แล้ว",
-      "caseId": "GE176",
-      "type": "ผู้ป่วยวิกฤต",
-      "location": "ICU - Ward 4B",
-      "transferType": "เปลนอน",
-      "equipment": "ออกซิเจน",
-    },
-    {
-      "nurse": "พยาบาล สมศรี",
-      "time": "2 นาทีที่แล้ว",
-      "caseId": "GE174",
-      "type": "ผู้ป่วยฉุกเฉิน",
-      "location": "ER - Ward 5B",
-      "transferType": "เปลนอน",
-      "equipment": "ออกซิเจน, เครื่องวัดความดัน",
-    },
-    {
-      "nurse": "พยาบาล วิภา",
-      "time": "15 นาทีที่แล้ว",
-      "caseId": "GE175",
-      "type": "ผู้ป่วยทั่วไป",
-      "location": "OPD - Ward 3A",
-      "transferType": "เปลนั่ง",
-      "equipment": "ไม่มี",
-    },
-    {
-      "nurse": "พยาบาล รัตนา",
-      "time": "1 ชั่วโมงที่แล้ว",
-      "caseId": "GE176",
-      "type": "ผู้ป่วยวิกฤต",
-      "location": "ICU - Ward 4B",
-      "transferType": "เปลนอน",
-      "equipment": "ออกซิเจน",
-    },
-    {
-      "nurse": "พยาบาล สมศรี",
-      "time": "2 นาทีที่แล้ว",
-      "caseId": "GE174",
-      "type": "ผู้ป่วยฉุกเฉิน",
-      "location": "ER - Ward 5B",
-      "transferType": "เปลนอน",
-      "equipment": "ออกซิเจน, เครื่องวัดความดัน",
-    },
-    {
-      "nurse": "พยาบาล วิภา",
-      "time": "15 นาทีที่แล้ว",
-      "caseId": "GE175",
-      "type": "ผู้ป่วยทั่วไป",
-      "location": "OPD - Ward 3A",
-      "transferType": "เปลนั่ง",
-      "equipment": "ไม่มี",
-    },
-    {
-      "nurse": "พยาบาล รัตนา",
-      "time": "1 ชั่วโมงที่แล้ว",
-      "caseId": "GE176",
-      "type": "ผู้ป่วยวิกฤต",
-      "location": "ICU - Ward 4B",
-      "transferType": "เปลนอน",
-      "equipment": "ออกซิเจน",
-    },
-  ];
+  Future<void> _fetchCases() async {
+    try {
+      final fetchedAll = await GetcaseFunction.fetchAllCasesNurse();
+      final fetchedMy = await GetcaseFunction.fetchMyCasesNurse(username);
 
-  final List<Map<String, String>> myCases = [
-    {
-      "nurse": "พยาบาล สมศรี",
-      "time": "2 นาทีที่แล้ว",
-      "caseId": "GE177",
-      "type": "ผู้ป่วยฉุกเฉิน",
-      "location": "ER - Ward 5B",
-      "transferType": "เปลนอน",
-      "equipment": "ออกซิเจน, เครื่องวัดความดัน",
-    },
-  ];
+      setState(() {
+        allCases = fetchedAll;
+        myCases = fetchedMy;
+        loadingAll = false;
+        loadingMy = false;
+      });
+    } catch (e) {
+      print("Error fetching cases: $e");
+    }
+  }
+
+  String timeAgo(String createdAt) {
+    try {
+      final date = DateTime.parse(createdAt);
+      final diff = DateTime.now().difference(date);
+
+      if (diff.inMinutes < 60) return '${diff.inMinutes} นาทีที่แล้ว';
+      if (diff.inHours < 24) return '${diff.inHours} ชั่วโมงที่แล้ว';
+      return '${diff.inDays} วันก่อน';
+    } catch (e) {
+      return createdAt;
+    }
+  }
+
+  String formatEquipment(dynamic equipment) {
+    if (equipment == null) return 'ไม่มี';
+    if (equipment is List) return equipment.join(', ');
+    if (equipment is String) return equipment;
+    return equipment.toString();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -143,7 +107,6 @@ class _NurseListCaseScreenState extends State<NurseListCaseScreen>
           ],
         ),
       ),
-      // ignore: sized_box_for_whitespace
       endDrawer: Container(
         width: MediaQuery.of(context).size.width * 0.67,
         child: Drawer(
@@ -164,15 +127,14 @@ class _NurseListCaseScreenState extends State<NurseListCaseScreen>
                       ),
                       child: Icon(Icons.person, size: 80, color: Colors.white),
                     ),
-                    SizedBox(height: 20),
+                    const SizedBox(height: 20),
                     ListTile(
-                      leading: Icon(Icons.person),
-                      // ใช้ fullName จาก SharedPreferences
+                      leading: const Icon(Icons.person),
                       title: Text('ชื่อผู้ใช้: $fname $lname'),
                     ),
                     ListTile(
-                      leading: Icon(Icons.logout),
-                      title: Text('ออกจากระบบ'),
+                      leading: const Icon(Icons.logout),
+                      title: const Text('ออกจากระบบ'),
                       onTap: () {
                         Navigator.pushReplacement(
                           context,
@@ -191,35 +153,44 @@ class _NurseListCaseScreenState extends State<NurseListCaseScreen>
       ),
       body: Column(
         children: [
-          // ✅ ช่องค้นหา
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: TextField(
               decoration: InputDecoration(
                 hintText: 'ค้นหาเคสผู้ป่วย',
-                prefixIcon: Icon(Icons.search),
+                prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
               onChanged: (value) {
-                // เพิ่ม logic ค้นหา ถ้าต้องการ
+                // สามารถเพิ่ม logic search/filter ได้
               },
             ),
           ),
-          // ✅ Tab content ที่แสดง case
           Expanded(
             child: TabBarView(
               controller: _tabController,
               children: [
-                CaseListView(cases: allCases),
-                CaseListView(cases: myCases),
+                loadingAll
+                    ? Center(child: CircularProgressIndicator())
+                    : CaseListView(
+                        cases: allCases,
+                        timeFormatter: timeAgo,
+                        formatEquipment: formatEquipment,
+                      ),
+                loadingMy
+                    ? Center(child: CircularProgressIndicator())
+                    : CaseListView(
+                        cases: myCases,
+                        timeFormatter: timeAgo,
+                        formatEquipment: formatEquipment,
+                      ),
               ],
             ),
           ),
         ],
       ),
-      // ✅ ปุ่มไมค์
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.push(
@@ -235,9 +206,16 @@ class _NurseListCaseScreenState extends State<NurseListCaseScreen>
 }
 
 class CaseListView extends StatelessWidget {
-  final List<Map<String, String>> cases;
+  final List<Map<String, dynamic>> cases;
+  final String Function(String) timeFormatter;
+  final String Function(dynamic) formatEquipment;
 
-  const CaseListView({super.key, required this.cases});
+  const CaseListView({
+    super.key,
+    required this.cases,
+    required this.timeFormatter,
+    required this.formatEquipment,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -257,27 +235,33 @@ class CaseListView extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item["nurse"] ?? '',
+                  item["nurse_name"] ?? '',
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 Text(
-                  item["time"] ?? '',
+                  timeFormatter(item["created_at"] ?? ''),
                   style: TextStyle(color: Colors.grey[600]),
                 ),
                 const SizedBox(height: 8),
                 infoRow(
                   Icons.confirmation_number,
-                  "หมายเลขผู้ป่วย: ${item['caseId']}",
+                  "หมายเลขผู้ป่วย: ${item['patient_id'] ?? ''}",
                 ),
-                infoRow(Icons.person, "ประเภทผู้ป่วย: ${item['type']}"),
-                infoRow(Icons.place, "จุดรับ-ส่ง: ${item['location']}"),
+                infoRow(
+                  Icons.person,
+                  "ประเภทผู้ป่วย: ${item['patient_type'] ?? ''}",
+                ),
+                infoRow(
+                  Icons.place,
+                  "จุดรับ-ส่ง: ${item['room_from'] ?? ''} → ${item['room_to'] ?? ''}",
+                ),
                 infoRow(
                   Icons.airline_seat_flat,
-                  "ประเภทเปล: ${item['transferType']}",
+                  "ประเภทเปล: ${item['stretcher_type'] ?? ''}",
                 ),
                 infoRow(
                   Icons.medical_services,
-                  "อุปกรณ์เสริม: ${item['equipment']}",
+                  "อุปกรณ์เสริม: ${formatEquipment(item['equipment'])}",
                 ),
               ],
             ),

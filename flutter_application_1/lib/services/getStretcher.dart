@@ -9,7 +9,7 @@ class GetStretcher {
   /// ดึงข้อมูลประเภทเปล
   /// คืนค่าเป็น List<Map<String, dynamic>> หรือ null ถ้า failed
   static Future<List<Map<String, dynamic>>> getStretcherTypes() async {
-    final url = Uri.parse('$baseUrl/stretcher_types');
+    final url = Uri.parse('$baseUrl/stretcher');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {

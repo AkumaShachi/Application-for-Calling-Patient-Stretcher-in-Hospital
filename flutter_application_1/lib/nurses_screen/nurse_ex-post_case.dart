@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/addcase_function.dart';
+import 'nurse_list_case.dart';
 
 class NurseExCaseScreen extends StatefulWidget {
   final String patientId;
@@ -62,7 +63,13 @@ class _NurseExCaseScreenState extends State<NurseExCaseScreen> {
             TextButton(
               onPressed: () {
                 Navigator.pop(context); // ปิด popup ก่อน
-                _saveCase(); // เรียกบันทึกเคส
+                _saveCase();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => NurseListCaseScreen(),
+                  ),
+                ); // เรียกบันทึกเคส
               },
               child: const Text('บันทึก'),
             ),
