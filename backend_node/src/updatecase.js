@@ -41,7 +41,6 @@ router.put('/cases/:caseId', async (req, res) => {
       }
       const c = caseRows[0];
 
-      // ดึงอุปกรณ์ที่ใช้
       // ดึงอุปกรณ์ที่ใช้จาก CaseEquipments
       const [equipRows] = await pool.query(
         'SELECT equipment_id FROM CaseEquipments WHERE case_id = ?',
@@ -57,7 +56,7 @@ router.put('/cases/:caseId', async (req, res) => {
       }
 
       // ย้ายเคสไป RecordHistory
-      await pool.query(
+      const [resultHistory] = await pool.query(
         `INSERT INTO RecordHistory
           (case_id, patient_id, patient_type, room_from, room_to, stretcher_type_id, status, requested_by, assigned_porter, created_at, completed_at, notes)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)`,
@@ -77,11 +76,14 @@ router.put('/cases/:caseId', async (req, res) => {
       );
       console.log(`✅ Case ${caseId} inserted into RecordHistory`);
 
-      // ย้ายอุปกรณ์ไป RecordEquipments
+      // ใช้ case_id เดิมเป็น key ใน RecordHistory
+      const recordHistoryCaseId = c.case_id;
+
+      // ย้ายอุปกรณ์ไป RecordEquipments (อ้างอิง RecordHistory)
       for (const e of equipRows) {
         await pool.query(
           'INSERT INTO RecordEquipments (case_id, equipment_id) VALUES (?, ?)',
-          [c.case_id, e.equipment_id]
+          [recordHistoryCaseId, e.equipment_id]
         );
       }
 

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'loginscreen.dart';
-import 'nurses_screen/nurse_add_case.dart';
 import 'services/user_prefs.dart';
 
 void main() async {

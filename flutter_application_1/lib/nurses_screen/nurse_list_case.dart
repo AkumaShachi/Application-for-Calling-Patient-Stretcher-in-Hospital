@@ -1,6 +1,9 @@
-import 'dart:async';
+// ignore_for_file: sized_box_for_whitespace, avoid_print
 
+import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
+import '../editprofilescreen.dart';
 import '../loginscreen.dart';
 import '../services/getcase_function.dart';
 import 'nurse_add_case.dart';
@@ -21,6 +24,11 @@ class _NurseListCaseScreenState extends State<NurseListCaseScreen>
   String fname = '';
   String lname = '';
   String username = '';
+  String email = '';
+  String phone = '';
+
+  File? _selectedImage;
+  String? profileImageUrl;
 
   List<Map<String, dynamic>> allCases = [];
   List<Map<String, dynamic>> myCases = [];
@@ -53,6 +61,9 @@ class _NurseListCaseScreenState extends State<NurseListCaseScreen>
       fname = prefs.getString('fname_U') ?? '';
       lname = prefs.getString('lname_U') ?? '';
       username = prefs.getString('id') ?? '';
+      email = prefs.getString('email_U') ?? '';
+      phone = prefs.getString('phone_U') ?? '';
+      profileImageUrl = prefs.getString('profile_image');
     });
     print('Loaded username: $username');
   }
@@ -118,19 +129,64 @@ class _NurseListCaseScreenState extends State<NurseListCaseScreen>
                 padding: EdgeInsets.symmetric(vertical: 20),
                 child: Column(
                   children: [
-                    Container(
-                      width: 175,
-                      height: 175,
-                      decoration: BoxDecoration(
-                        color: Colors.blue,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(Icons.person, size: 80, color: Colors.white),
+                    CircleAvatar(
+                      radius: 60,
+                      backgroundImage: _selectedImage != null
+                          ? FileImage(_selectedImage!) as ImageProvider
+                          : (profileImageUrl != null
+                                ? NetworkImage(profileImageUrl!)
+                                : null),
+                      child: (_selectedImage == null && profileImageUrl == null)
+                          ? Icon(Icons.person, size: 60)
+                          : null,
                     ),
                     const SizedBox(height: 20),
                     ListTile(
                       leading: const Icon(Icons.person),
                       title: Text('ชื่อผู้ใช้: $fname $lname'),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.email),
+                      title: Text('อีเมล: $email'),
+                    ),
+
+                    // เบอร์โทร
+                    ListTile(
+                      leading: const Icon(Icons.phone),
+                      title: Text('เบอร์โทร: $phone'),
+                    ),
+
+                    // ปุ่มแก้ไข
+                    ListTile(
+                      leading: const Icon(Icons.edit),
+                      title: const Text('แก้ไขข้อมูล'),
+                      onTap: () async {
+                        Navigator.pop(context); // ปิด Drawer ก่อน
+                        final updatedProfile = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => EditProfileScreen(
+                              fname: fname,
+                              lname: lname,
+                              email: email,
+                              phone: phone,
+                              ImageUrl: profileImageUrl,
+                            ),
+                          ),
+                        );
+
+                        if (updatedProfile != null) {
+                          setState(() {
+                            fname = updatedProfile['fname_U'] ?? fname;
+                            lname = updatedProfile['lname_U'] ?? lname;
+                            email = updatedProfile['email_U'] ?? email;
+                            phone = updatedProfile['phone_U'] ?? phone;
+                            profileImageUrl =
+                                updatedProfile['profile_image'] ??
+                                profileImageUrl; // เพิ่มตรงนี้
+                          });
+                        }
+                      },
                     ),
                     ListTile(
                       leading: const Icon(Icons.logout),

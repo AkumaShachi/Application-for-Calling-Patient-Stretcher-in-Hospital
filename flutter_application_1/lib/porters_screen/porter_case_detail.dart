@@ -1,4 +1,4 @@
-// ignore_for_file: library_private_types_in_public_api
+// ignore_for_file: library_private_types_in_public_api, avoid_print
 
 import 'package:flutter/material.dart';
 
@@ -53,6 +53,10 @@ class PorterCaseDetailScreen extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               'เวลาสร้างเคส: ${item['created_at'] != null ? DateTime.parse(item['created_at']).toLocal().toString() : '-'}',
+              style: const TextStyle(fontSize: 16),
+            ),
+            Text(
+              'เวลาเสร้จสิ้น: ${item['completed_at'] != null ? DateTime.parse(item['completed_at']).toLocal().toString() : '-'}',
               style: const TextStyle(fontSize: 16),
             ),
           ],

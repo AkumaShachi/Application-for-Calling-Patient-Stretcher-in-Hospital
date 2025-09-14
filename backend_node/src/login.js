@@ -40,7 +40,10 @@ router.get('/user/:username', async (req, res) => {
 
   try {
     const [results] = await pool.query(
-      'SELECT fname_U, lname_U FROM Users WHERE username = ? LIMIT 1',
+      `SELECT fname_U, lname_U, email_U, phone_U, profile_image
+       FROM Users
+       WHERE username = ?
+       LIMIT 1`,
       [username]
     );
 
@@ -48,11 +51,13 @@ router.get('/user/:username', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    res.json(results[0]); // { fname_U: '...', lname_U: '...' }
+    res.json(results[0]); // ส่ง profile_image ด้วย
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+
 
 module.exports = router;

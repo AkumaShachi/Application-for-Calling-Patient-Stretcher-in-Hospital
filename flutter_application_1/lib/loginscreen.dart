@@ -1,4 +1,4 @@
-// ignore_for_file: unused_field, deprecated_member_use, avoid_print, use_build_context_synchronously
+// ignore_for_file: unused_field, deprecated_member_use, avoid_print, use_build_context_synchronously, prefer_interpolation_to_compose_strings
 
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -75,15 +75,27 @@ class _LoginScreenState extends State<LoginScreen>
       return;
     }
     var loginResult = await LoginFunctions.loginUser(username, password);
-    print(loginResult);
+    print("logine success : ");
     if (loginResult?['status'] == 'success') {
       var userInfo = await LoginFunctions.getUserInfo(username);
       var id = username;
       var fname = userInfo?['fname_U'] ?? '';
       var lname = userInfo?['lname_U'] ?? '';
+      var phone = userInfo?['phone_U'] ?? '';
+      var email = userInfo?['email_U'] ?? '';
+      var profileImagePath = userInfo?['profile_image'] ?? '';
+      var profileImageUrl = profileImagePath.isNotEmpty
+          ? 'http://192.168.1.4:4000$profileImagePath'
+          : '';
       var role = loginResult?['role'];
-
-      await UserPreferences.setUser(id, fname, lname);
+      await UserPreferences.setUser(
+        id,
+        fname,
+        lname,
+        phone,
+        email,
+        profileImageUrl,
+      );
 
       if (role == 'nurse') {
         Navigator.push(

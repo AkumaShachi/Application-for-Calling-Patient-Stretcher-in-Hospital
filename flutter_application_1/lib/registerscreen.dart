@@ -1,4 +1,4 @@
-// ignore_for_file: non_constant_identifier_names, prefer_final_fields, deprecated_member_use, use_build_context_synchronously
+// ignore_for_file: non_constant_identifier_names, prefer_final_fields, deprecated_member_use, use_build_context_synchronously, avoid_print
 
 import 'dart:ui';
 import 'package:flutter/material.dart';

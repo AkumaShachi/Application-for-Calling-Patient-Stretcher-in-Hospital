@@ -1,3 +1,5 @@
+// ignore_for_file: non_constant_identifier_names, file_names
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -40,7 +42,6 @@ class _NurseExCaseScreenState extends State<NurseExCaseScreen> {
 
   Future<void> _loadUserName() async {
     final prefs = await SharedPreferences.getInstance();
-    final id = prefs.getString('id') ?? '';
     final fname = prefs.getString('fname_U') ?? '';
     final lname = prefs.getString('lname_U') ?? '';
     setState(() {
