@@ -38,9 +38,16 @@ dependencies:
   flutter_dotenv: ^6.0.0
   shared_preferences: ^2.1.2 
   socket_io_client: ^2.0.0
-  image_picker: ^1.1.0   # สำหรับเลือกภาพจาก gallery/camera
-  mime: ^1.0.2           # สำหรับตรวจสอบประเภทไฟล์ (MIME type)
-  http_parser: ^4.0.2    # สำหรับกำหนด contentType ตอนอัปโหลด
+  
+  image_picker: ^1.1.0          # สำหรับเลือกภาพจาก gallery/camera
+  mime: ^1.0.2                  # สำหรับตรวจสอบประเภทไฟล์ (MIME type)
+  http_parser: ^4.0.2           # สำหรับกำหนด contentType ตอนอัปโหลด
+
+  speech_to_text: ^7.3.0        # ล่าสุด: 7.3.0 :contentReference[oaicite:0]{index=0}
+  flutter_sound: ^9.2.13        # ล่าสุดในสาย 9.x ยังอยู่ที่ 9.2.13 :contentReference[oaicite:1]{index=1}
+  path_provider: ^2.1.5 
+
+  permission_handler: ^11.3.0        # ล่าสุด: 2.1.5 :contentReference[oaicite:2]{index=2}
 
 dev_dependencies:
   flutter_test:

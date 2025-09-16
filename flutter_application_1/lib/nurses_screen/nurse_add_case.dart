@@ -1,18 +1,24 @@
-import 'package:flutter/material.dart';
+import 'dart:io';
 import 'dart:math';
+import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
+
 import '../services/getEquipments.dart';
 import '../services/getStretcher.dart';
+import '../services/recorder_function.dart';
 import '../services/user_prefs.dart';
+import '../services/mic_function.dart';
 import 'nurse_ex-post_case.dart';
 
 class NurseAddCaseScreen extends StatefulWidget {
   const NurseAddCaseScreen({super.key});
+
   @override
   State<NurseAddCaseScreen> createState() => _NurseAddCaseScreenState();
 }
 
 class _NurseAddCaseScreenState extends State<NurseAddCaseScreen> {
-  // controller สำหรับแต่ละช่อง
+  // Controllers
   final TextEditingController patientIdController = TextEditingController();
   final TextEditingController patientTypeController = TextEditingController();
   final TextEditingController receivePointController = TextEditingController();
@@ -20,24 +26,48 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen> {
   final TextEditingController stretcherTypeController = TextEditingController();
   final TextEditingController equipmentController = TextEditingController();
 
-  List<int> selectedEquipmentIds = []; // รายการ ID ของอุปกรณ์ที่เลือก
-  int? selectedStretcherTypeId; // ID ของประเภทเปลที่เลือก (nullable)
-  String stretcherTypeName = ''; // ชื่อประเภทเปล
-  String equipmentNames = ''; // ชื่ออุปกรณ์
+  List<int> selectedEquipmentIds = [];
+  int? selectedStretcherTypeId;
+
+  String stretcherTypeName = '';
+  String equipmentNames = '';
+
+  String? editingField;
+
+  final MicController micController = MicController();
+  final AudioRecorder audioRecorder = AudioRecorder();
+
+  bool isMicButtonDisabled = false; // ป้องกันกดซ้อน
+
+  @override
+  void initState() {
+    super.initState();
+    micController.init();
+    _checkPermissionAndInitRecorder();
+  }
+
+  Future<void> _checkPermissionAndInitRecorder() async {
+    final status = await Permission.microphone.status;
+    if (!status.isGranted) {
+      final result = await Permission.microphone.request();
+      if (!result.isGranted) return;
+    }
+    await audioRecorder.init();
+  }
 
   @override
   void dispose() {
-    // กำจัด controller เมื่อ widget ถูกทำลาย
     patientIdController.dispose();
     patientTypeController.dispose();
     receivePointController.dispose();
     sendPointController.dispose();
     stretcherTypeController.dispose();
     equipmentController.dispose();
+    audioRecorder.dispose();
     super.dispose();
   }
 
-  void _validateAndSubmit() async {
+  void _validateAndSubmit() {
     if (patientIdController.text.isEmpty ||
         patientTypeController.text.isEmpty ||
         receivePointController.text.isEmpty ||
@@ -53,7 +83,6 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen> {
       return;
     }
 
-    // ✅ ดึงชื่อผู้ใช้จาก SharedPreferences ผ่าน UserPreferences
     final fname = UserPreferences.fname ?? '';
     final lname = UserPreferences.lname ?? '';
     final userName = '$fname $lname';
@@ -68,7 +97,7 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen> {
           sendPoint: sendPointController.text,
           stretcherType: stretcherTypeName,
           equipments: equipmentNames,
-          nurseName: userName, // เพิ่มพารามิเตอร์ nurseName
+          nurseName: userName,
         ),
       ),
     );
@@ -78,25 +107,18 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('เพิ่มเคสใหม่'), // หัวข้อแอพ
-        centerTitle: true, // จัดหัวข้อตรงกลาง
-        backgroundColor: Colors.white, // สีพื้นหลัง
-        elevation: 0, // เงา
-        foregroundColor: Colors.black, // สีตัวอักษร
+        title: const Text('เพิ่มเคสใหม่'),
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        foregroundColor: Colors.black,
         leading: TextButton(
-          onPressed: () {
-            Navigator.pop(context); // กลับไปหน้าก่อนหน้า
-          },
-          child: const Text(
-            'ยกเลิก',
-            style: TextStyle(color: Colors.blue),
-            overflow: TextOverflow.visible, // ไม่ตัดคำ
-            softWrap: false, // ไม่ขึ้นบรรทัดใหม่
-          ),
+          onPressed: () => Navigator.pop(context),
+          child: const Text('ยกเลิก', style: TextStyle(color: Colors.blue)),
         ),
         actions: [
           TextButton(
-            onPressed: _validateAndSubmit, // ใช้ method ที่เราแยกไว้
+            onPressed: _validateAndSubmit,
             child: const Text('บันทึก', style: TextStyle(color: Colors.blue)),
           ),
         ],
@@ -105,68 +127,88 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 12),
-                  _inputItem(
-                    Icons.badge,
-                    'หมายเลขผู้ป่วย',
-                    patientIdController,
-                  ),
-                  _inputItem(
-                    Icons.person,
-                    'ประเภทผู้ป่วย',
-                    patientTypeController,
-                  ),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _inputItem(
-                          Icons.location_on,
-                          'จุดรับ',
-                          receivePointController,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _inputItem(
-                          Icons.location_on,
-                          'จุดส่ง',
-                          sendPointController,
-                        ),
-                      ),
-                    ],
-                  ),
-                  _stretcherTypeSelector(), // ตัวเลือกประเภทเปล
-                  _equipmentSelector(), // ตัวเลือกอุปกรณ์
-                ],
+            _inputItem(Icons.badge, 'หมายเลขผู้ป่วย', patientIdController),
+            _inputItem(Icons.person, 'ประเภทผู้ป่วย', patientTypeController),
+            _inputItem(Icons.location_on, 'จุดรับ', receivePointController),
+            _inputItem(Icons.location_on, 'จุดส่ง', sendPointController),
+            _stretcherTypeSelector(),
+            _equipmentSelector(),
+            const SizedBox(height: 24),
+            // Mic + Recorder
+            CircleAvatar(
+              radius: min(MediaQuery.of(context).size.width * 0.1, 100),
+              backgroundColor: Colors.blue[50],
+              child: IconButton(
+                icon: Icon(
+                  micController.isListening ? Icons.mic_off : Icons.mic,
+                  size: min(MediaQuery.of(context).size.width * 0.1, 100),
+                  color: Colors.blue,
+                ),
+                onPressed: isMicButtonDisabled
+                    ? null
+                    : () async {
+                        setState(() => isMicButtonDisabled = true);
+                        try {
+                          final status = await Permission.microphone.status;
+                          if (!status.isGranted) {
+                            final result = await Permission.microphone
+                                .request();
+                            if (!result.isGranted) return;
+                          }
+
+                          if (micController.isListening) {
+                            await micController.stop();
+                            if (audioRecorder.isRecording) {
+                              File? recordedFile = await audioRecorder
+                                  .stopRecording();
+                              if (recordedFile != null) {
+                                print(
+                                  "ไฟล์เสียงบันทึกแล้ว: ${recordedFile.path}",
+                                );
+                              }
+                            }
+                          } else {
+                            if (editingField != null)
+                              await micController.stop();
+
+                            await audioRecorder.startRecording();
+                            if (editingField != null) {
+                              try {
+                                micController.listen(
+                                  editingField: editingField!,
+                                  controllers: {
+                                    'หมายเลขผู้ป่วย': patientIdController,
+                                    'ประเภทผู้ป่วย': patientTypeController,
+                                    'จุดรับ': receivePointController,
+                                    'จุดส่ง': sendPointController,
+                                  },
+                                  onUpdate: () => setState(() {}),
+                                );
+                              } catch (err) {
+                                print("Mic listen error: $err");
+                                await micController.stop();
+                              }
+                            }
+                          }
+                        } catch (e) {
+                          print("Mic/Recorder error: $e");
+                        } finally {
+                          setState(() => isMicButtonDisabled = false);
+                        }
+                      },
               ),
             ),
-            const SizedBox(height: 24),
-            // 🔵 Mic button
-            Column(
-              children: [
-                CircleAvatar(
-                  radius: min(MediaQuery.of(context).size.width * 0.1, 100),
-                  backgroundColor: Colors.blue[50],
-                  child: IconButton(
-                    icon: Icon(
-                      Icons.mic,
-                      size: min(MediaQuery.of(context).size.width * 0.1, 100),
-                      color: Colors.blue,
-                    ),
-                    onPressed: () {
-                      // ใส่ logic สำหรับเริ่มพูดตรงนี้
-                    },
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text('แตะเพื่อพูด', style: TextStyle(fontSize: 16)),
-              ],
+            const SizedBox(height: 8),
+            Text(
+              micController.isListening
+                  ? "กำลังฟัง: ${editingField ?? ''}"
+                  : "แตะเพื่อพูด",
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              micController.recognizedText,
+              style: const TextStyle(fontSize: 16),
             ),
           ],
         ),
@@ -174,48 +216,74 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen> {
     );
   }
 
-  // สร้างช่อง input
   Widget _inputItem(
     IconData icon,
     String label,
     TextEditingController controller,
   ) {
+    bool isEditing = editingField == label;
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16.0),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Icon(icon, color: Colors.blue),
-          const SizedBox(width: 8),
           Expanded(
-            child: TextFormField(
+            child: TextField(
               controller: controller,
+              enabled: isEditing,
               decoration: InputDecoration(
                 labelText: label,
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                prefixIcon: const Icon(
-                  Icons.edit,
-                  size: 18,
-                  color: Colors.grey,
-                ),
+                border: const OutlineInputBorder(),
               ),
-              onChanged: (_) => setState(() {}),
-              validator: (value) =>
-                  value == null || value.isEmpty ? 'กรุณากรอก $label' : null,
             ),
           ),
-          const SizedBox(width: 8),
-          if (controller.text.isNotEmpty)
-            const Icon(Icons.check, color: Colors.green),
+          IconButton(
+            icon: Icon(
+              isEditing ? Icons.check : Icons.edit,
+              color: Colors.grey,
+            ),
+            onPressed: isMicButtonDisabled
+                ? null
+                : () async {
+                    setState(() => isMicButtonDisabled = true);
+                    try {
+                      if (isEditing) {
+                        setState(() => editingField = null);
+                        await micController.stop();
+                      } else {
+                        if (editingField != null) await micController.stop();
+                        setState(() {
+                          editingField = label;
+                          micController.recognizedText = '';
+                        });
+                        try {
+                          micController.listen(
+                            editingField: label,
+                            controllers: {
+                              'หมายเลขผู้ป่วย': patientIdController,
+                              'ประเภทผู้ป่วย': patientTypeController,
+                              'จุดรับ': receivePointController,
+                              'จุดส่ง': sendPointController,
+                            },
+                            onUpdate: () => setState(() {}),
+                          );
+                        } catch (err) {
+                          print("Mic listen error: $err");
+                          await micController.stop();
+                        }
+                      }
+                    } finally {
+                      setState(() => isMicButtonDisabled = false);
+                    }
+                  },
+          ),
         ],
       ),
     );
   }
 
-  // ตัวเลือกประเภทเปล
   Widget _stretcherTypeSelector() {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
@@ -225,28 +293,23 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen> {
             context: context,
             builder: (context) {
               return FutureBuilder<List<Map<String, dynamic>>>(
-                future: GetStretcher.getStretcherTypes(), // ดึงข้อมูลประเภทเปล
+                future: GetStretcher.getStretcherTypes(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(
-                      child: CircularProgressIndicator(),
-                    ); // แสดง loading
+                    return const Center(child: CircularProgressIndicator());
                   }
                   if (snapshot.hasError || snapshot.data == null) {
-                    return const Center(
-                      child: Text('ไม่สามารถโหลดข้อมูลได้'),
-                    ); // แสดงข้อผิดพลาด
+                    return const Center(child: Text('ไม่สามารถโหลดข้อมูลได้'));
                   }
-                  final types = snapshot.data!; // ข้อมูลประเภทเปล
+                  final types = snapshot.data!;
                   return ListView.builder(
                     itemCount: types.length,
                     itemBuilder: (context, index) {
                       final type = types[index];
                       return ListTile(
-                        title: Text(type['type_name']), // ชื่อประเภทเปล
-                        subtitle: Text('จำนวน: ${type['quantity']}'), // จำนวน
-                        onTap: () =>
-                            Navigator.pop(context, type), // เลือกประเภทเปล
+                        title: Text(type['type_name']),
+                        subtitle: Text('จำนวน: ${type['quantity']}'),
+                        onTap: () => Navigator.pop(context, type),
                       );
                     },
                   );
@@ -257,9 +320,8 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen> {
 
           if (selected != null) {
             setState(() {
-              selectedStretcherTypeId =
-                  selected['id']; // กำหนด ID ประเภทเปลที่เลือก
-              stretcherTypeName = selected['type_name']; // กำหนดชื่อประเภทเปล
+              selectedStretcherTypeId = selected['id'];
+              stretcherTypeName = selected['type_name'];
             });
           }
         },
@@ -271,7 +333,7 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen> {
               child: Text(
                 stretcherTypeName.isEmpty
                     ? 'เลือกประเภทเปล'
-                    : stretcherTypeName, // แสดงชื่อประเภทเปลที่เลือก
+                    : stretcherTypeName,
               ),
             ),
           ],
@@ -304,11 +366,10 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen> {
                       final equipment = snapshot.data!;
                       List<int> tempSelected = List.from(selectedEquipmentIds);
 
-                      // เพิ่ม StatefulBuilder รอบ Column
                       return StatefulBuilder(
                         builder: (context, setModalState) {
                           return SizedBox(
-                            height: 400, // กำหนดความสูงของ modal
+                            height: 400,
                             child: Column(
                               children: [
                                 Expanded(

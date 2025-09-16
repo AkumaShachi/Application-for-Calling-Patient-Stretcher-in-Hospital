@@ -98,14 +98,14 @@ class _LoginScreenState extends State<LoginScreen>
       );
 
       if (role == 'nurse') {
-        Navigator.push(
+        Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => NurseListCaseScreen()),
+          MaterialPageRoute(builder: (context) => const NurseListCaseScreen()),
         );
       } else if (role == 'porter') {
-        Navigator.push(
+        Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => PorterCaseListScreen()),
+          MaterialPageRoute(builder: (context) => const PorterCaseListScreen()),
         );
       } else {
         _showMsg('บทบาทผู้ใช้ไม่ถูกต้อง');
