@@ -1,8 +1,9 @@
 // ignore_for_file: deprecated_member_use
-
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
+import 'services/forget_functions.dart';
 import 'services/reset_functions.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
@@ -21,6 +22,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
   bool _obscureNew = true;
   bool _obscureConfirm = true;
   bool _loading = false;
+
+  Timer? _emailLockTimer;
+  bool _emailSent = false;
+  int _emailLockSeconds = 0;
 
   // โทนสีหลัก
   static const Color kDeepPurple = Color(0xFF5B2EFF);
@@ -153,7 +158,44 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
     emailController.dispose();
     newPasswordController.dispose();
     confirmPasswordController.dispose();
+    _emailLockTimer?.cancel();
     super.dispose();
+  }
+
+  Future<bool> _sendReset() async {
+    final email = emailController.text.trim();
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("กรุณากรอกอีเมลก่อน")));
+      return false;
+    }
+
+    try {
+      final result = await ForgetFunctions.sendResetEmail(email);
+
+      if (result == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("เกิดข้อผิดพลาดในการส่งอีเมล")),
+        );
+        return false;
+      } else if (result['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("ส่งรหัสรีเซ็ตไปยัง $email สำเร็จ")),
+        );
+        return true;
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("ส่งอีเมลไม่สำเร็จ: ${result['error']}")),
+        );
+        return false;
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("เกิดข้อผิดพลาด โปรดลองอีกครั้ง")),
+      );
+      return false;
+    }
   }
 
   void _resetPassword() async {
@@ -228,6 +270,51 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
         SnackBar(content: Text('รีเซ็ตรหัสผ่านไม่สำเร็จ: ${result['error']}')),
       );
     }
+  }
+
+  void _onSendPressed() async {
+    if (_emailSent) return;
+    final email = emailController.text.trim();
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("กรุณากรอกอีเมลก่อน")));
+      return;
+    }
+
+    // เริ่มล็อก UI ทันทีแล้วค่อยเรียกส่ง — หากส่งไม่สำเร็จให้ยกเลิกล็อก
+    _startEmailLock(minutes: 30);
+
+    final success = await _sendReset();
+    if (!success) {
+      // ยกเลิกล็อกถ้าเกิดข้อผิดพลาด
+      _emailLockTimer?.cancel();
+      if (mounted) {
+        setState(() {
+          _emailSent = false;
+          _emailLockSeconds = 0;
+        });
+      }
+    }
+  }
+
+  void _startEmailLock({int minutes = 30}) {
+    _emailLockTimer?.cancel();
+    setState(() {
+      _emailSent = true;
+      _emailLockSeconds = minutes * 60;
+    });
+    _emailLockTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) return;
+      setState(() {
+        _emailLockSeconds--;
+        if (_emailLockSeconds <= 0) {
+          _emailLockTimer?.cancel();
+          _emailSent = false;
+          _emailLockSeconds = 0;
+        }
+      });
+    });
   }
 
   @override
@@ -346,6 +433,56 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                         child: _GlassCard(
                           child: Column(
                             children: [
+                              // Email
+                              FadeTransition(
+                                opacity: _fieldFades[1],
+                                child: SlideTransition(
+                                  position: _fieldSlides[1],
+                                  child: _LabeledField(
+                                    controller: emailController,
+                                    label: "อีเมล",
+                                    hint: "example@mail.com",
+                                    icon: Icons.email_outlined,
+                                    keyboard: TextInputType.emailAddress,
+                                    suffix: _emailSent
+                                        ? null
+                                        : Padding(
+                                            padding: const EdgeInsets.only(
+                                              right: 4.0,
+                                            ),
+                                            child: TextButton(
+                                              onPressed: _onSendPressed,
+                                              style: TextButton.styleFrom(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 12,
+                                                      vertical: 8,
+                                                    ),
+                                                backgroundColor:
+                                                    _ResetPasswordScreenState
+                                                        .kDeepPurple,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                minimumSize: Size.zero,
+                                                tapTargetSize:
+                                                    MaterialTapTargetSize
+                                                        .shrinkWrap,
+                                              ),
+                                              child: const Text(
+                                                'ส่ง',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 14),
                               // Token
                               FadeTransition(
                                 opacity: _fieldFades[0],
@@ -369,23 +506,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                                 ),
                               ),
                               const SizedBox(height: 14),
-
-                              // Email
-                              FadeTransition(
-                                opacity: _fieldFades[1],
-                                child: SlideTransition(
-                                  position: _fieldSlides[1],
-                                  child: _LabeledField(
-                                    controller: emailController,
-                                    label: "อีเมล",
-                                    hint: "example@mail.com",
-                                    icon: Icons.email_outlined,
-                                    keyboard: TextInputType.emailAddress,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 14),
-
                               // New Password
                               FadeTransition(
                                 opacity: _fieldFades[2],

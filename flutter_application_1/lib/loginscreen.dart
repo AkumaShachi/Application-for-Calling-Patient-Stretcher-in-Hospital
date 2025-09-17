@@ -6,8 +6,8 @@ import 'package:flutter/material.dart';
 import 'nurses_screen/nurse_list_case.dart';
 import 'porters_screen/porter_list_case.dart';
 import 'registerscreen.dart';
-import 'forgetscreen.dart';
 
+import 'resetpassword.dart';
 import 'services/login_functions.dart';
 import 'services/user_prefs.dart';
 
@@ -262,7 +262,7 @@ class _LoginScreenState extends State<LoginScreen>
                               onPressed: () => Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => const ForgetScreen(),
+                                  builder: (_) => const ResetPasswordScreen(),
                                 ),
                               ),
                               style: TextButton.styleFrom(
