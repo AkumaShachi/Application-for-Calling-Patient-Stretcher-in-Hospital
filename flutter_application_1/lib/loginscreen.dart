@@ -2,10 +2,14 @@
 
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'nurses_screen/nurse_list_case.dart';
 import 'porters_screen/porter_list_case.dart';
 import 'registerscreen.dart';
+
+import 'design/theme.dart';
 
 import 'resetpassword.dart';
 import 'services/login_functions.dart';
@@ -23,11 +27,7 @@ class _LoginScreenState extends State<LoginScreen>
   bool rememberMe = false, showPassword = false, _exiting = false;
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
-
-  static const Color kDeepPurple = Color(0xFF5B2EFF);
-  static const Color kPurple = Color(0xFF8C6CFF);
-  static const Color kLavender = Color(0xFFEDE9FF);
-
+  static final baseUrl = dotenv.env['BASE_URL'];
   late final AnimationController _inCtrl = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 750),
@@ -54,7 +54,27 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   void initState() {
     super.initState();
+    _loadRemembered(); // ✅ โหลด username/password ที่เคยบันทึก
     Future.delayed(const Duration(milliseconds: 300), _inCtrl.forward);
+  }
+
+  Future<void> _loadRemembered() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedUsername = prefs.getString('saved_username') ?? '';
+    final savedPassword = prefs.getString('saved_password') ?? '';
+
+    print('📥 Load saved creds: user=$savedUsername pass=$savedPassword');
+
+    if (savedUsername.isNotEmpty && savedPassword.isNotEmpty) {
+      setState(() {
+        emailController.text = savedUsername;
+        passwordController.text = savedPassword;
+        rememberMe = true;
+      });
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) _login();
+      });
+    }
   }
 
   @override
@@ -74,9 +94,22 @@ class _LoginScreenState extends State<LoginScreen>
       _showMsg('กรุณากรอกข้อมูลให้ครบถ้วน');
       return;
     }
+
     var loginResult = await LoginFunctions.loginUser(username, password);
-    print("logine success : ");
     if (loginResult?['status'] == 'success') {
+      // ✅ บันทึก username/password ถ้าเลือกจำรหัสผ่าน
+      final prefs = await SharedPreferences.getInstance();
+
+      if (rememberMe) {
+        await prefs.setString('saved_username', username);
+        await prefs.setString('saved_password', password);
+        print('💾 Saved creds: $username / $password');
+      } else {
+        await prefs.remove('saved_username');
+        await prefs.remove('saved_password');
+        print('🗑️ Removed saved creds');
+      }
+
       var userInfo = await LoginFunctions.getUserInfo(username);
       var id = username;
       var fname = userInfo?['fname_U'] ?? '';
@@ -85,7 +118,7 @@ class _LoginScreenState extends State<LoginScreen>
       var email = userInfo?['email_U'] ?? '';
       var profileImagePath = userInfo?['profile_image'] ?? '';
       var profileImageUrl = profileImagePath.isNotEmpty
-          ? 'http://192.168.1.4:4000$profileImagePath'
+          ? '$baseUrl$profileImagePath'
           : '';
       var role = loginResult?['role'];
       await UserPreferences.setUser(
@@ -145,14 +178,15 @@ class _LoginScreenState extends State<LoginScreen>
     ];
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
           Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment(-1, -1),
                 end: Alignment(1, 1),
-                colors: [Color(0xFFF7F5FF), Color(0xFFEDE9FF)],
+                colors: [theme.scaffoldBackgroundColor, AppTheme.lavender],
               ),
             ),
           ),
@@ -162,8 +196,8 @@ class _LoginScreenState extends State<LoginScreen>
             child: _BlurCircle(
               diameter: 220,
               colors: [
-                kPurple.withOpacity(0.28),
-                kDeepPurple.withOpacity(0.18),
+                AppTheme.purple.withOpacity(0.28),
+                AppTheme.deepPurple.withOpacity(0.18),
               ],
             ),
           ),
@@ -171,13 +205,14 @@ class _LoginScreenState extends State<LoginScreen>
             bottom: -20,
             right: -20,
             child: _BlurCircle(
-              diameter: 260,
+              diameter: 220,
               colors: [
-                kDeepPurple.withOpacity(0.22),
-                kPurple.withOpacity(0.18),
+                AppTheme.purple.withOpacity(0.28),
+                AppTheme.deepPurple.withOpacity(0.18),
               ],
             ),
           ),
+
           SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 56),
             child: Form(
@@ -197,13 +232,13 @@ class _LoginScreenState extends State<LoginScreen>
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(20),
                             gradient: const LinearGradient(
-                              colors: [Colors.white, kLavender],
+                              colors: [Colors.white, AppTheme.lavender],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: kDeepPurple.withOpacity(0.12),
+                                color: AppTheme.purple,
                                 blurRadius: 24,
                                 spreadRadius: 2,
                                 offset: const Offset(0, 8),
@@ -222,7 +257,7 @@ class _LoginScreenState extends State<LoginScreen>
                       position: _titleSlide,
                       child: ShaderMask(
                         shaderCallback: (rect) => const LinearGradient(
-                          colors: [kDeepPurple, kPurple],
+                          colors: [AppTheme.deepPurple, AppTheme.purple],
                         ).createShader(rect),
                         child: const Text(
                           'เรียกเปลคนไข้',
@@ -266,7 +301,7 @@ class _LoginScreenState extends State<LoginScreen>
                                 ),
                               ),
                               style: TextButton.styleFrom(
-                                foregroundColor: kDeepPurple,
+                                foregroundColor: AppTheme.deepPurple,
                               ),
                               child: const Text('ลืมรหัสผ่าน?'),
                             ),
@@ -300,7 +335,7 @@ class _LoginScreenState extends State<LoginScreen>
                               child: const Text(
                                 'ลงทะเบียน',
                                 style: TextStyle(
-                                  color: kDeepPurple,
+                                  color: AppTheme.deepPurple,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -345,7 +380,9 @@ class _LoginScreenState extends State<LoginScreen>
           obscureText: obscure,
           validator: validator,
           decoration: InputDecoration(
-            prefixIcon: icon != null ? Icon(icon, color: kDeepPurple) : null,
+            prefixIcon: icon != null
+                ? Icon(icon, color: AppTheme.deepPurple)
+                : null,
             hintText: hint,
             filled: true,
             fillColor: Colors.white,
@@ -355,18 +392,18 @@ class _LoginScreenState extends State<LoginScreen>
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: kLavender, width: 1.2),
+              borderSide: BorderSide(color: AppTheme.lavender, width: 1.2),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: kDeepPurple, width: 1.6),
+              borderSide: BorderSide(color: AppTheme.lavender, width: 1.6),
             ),
             suffixIcon: onToggle != null
                 ? IconButton(
                     onPressed: onToggle,
                     icon: Icon(
                       obscure ? Icons.visibility : Icons.visibility_off,
-                      color: kDeepPurple,
+                      color: AppTheme.deepPurple,
                     ),
                   )
                 : null,
@@ -449,7 +486,7 @@ class _GradientButtonState extends State<_GradientButton>
     with SingleTickerProviderStateMixin {
   late final AnimationController _pressCtrl = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 120),
+    duration: const Duration(milliseconds: 750),
   );
   late final Animation<double> _scale = Tween<double>(
     begin: 1.0,
@@ -470,17 +507,14 @@ class _GradientButtonState extends State<_GradientButton>
           padding: const EdgeInsets.symmetric(vertical: 14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
-            gradient: const LinearGradient(
-              colors: [
-                _LoginScreenState.kDeepPurple,
-                _LoginScreenState.kPurple,
-              ],
+            gradient: LinearGradient(
+              colors: [AppTheme.deepPurple, AppTheme.purple],
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
             ),
             boxShadow: [
               BoxShadow(
-                color: _LoginScreenState.kDeepPurple.withOpacity(0.25),
+                color: AppTheme.deepPurple.withOpacity(0.25),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),

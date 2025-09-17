@@ -1,8 +1,11 @@
 // ignore_for_file: non_constant_identifier_names, prefer_final_fields, deprecated_member_use, use_build_context_synchronously, avoid_print
 
+import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
+import 'design/theme.dart';
 
 import 'services/regis_functions.dart';
 
@@ -30,10 +33,6 @@ class _RegisterScreenState extends State<RegisterScreen>
   bool _obscureConfirmPassword = true;
   bool _loading = false;
   String? selectedRole = '';
-
-  static const Color kDeepPurple = Color(0xFF5B2EFF);
-  static const Color kPurple = Color(0xFF8C6CFF);
-  static const Color kLavender = Color(0xFFEDE9FF);
 
   late final AnimationController _inCtrl = AnimationController(
     vsync: this,
@@ -65,26 +64,28 @@ class _RegisterScreenState extends State<RegisterScreen>
           curve: const Interval(0.12, 0.35, curve: Curves.easeOutCubic),
         ),
       );
-  late final List<Animation<double>> _fades = List.generate(
-    _fieldsIndex + 1,
-    (i) => CurvedAnimation(
+  late final List<Animation<double>> _fades = List.generate(_fieldsIndex + 1, (
+    i,
+  ) {
+    final start = 0.30 + i * 0.06;
+    final end = min(0.55 + i * 0.06, 1.0);
+    return CurvedAnimation(
       parent: _inCtrl,
-      curve: Interval(0.30 + i * 0.06, 0.55 + i * 0.06, curve: Curves.easeOut),
-    ),
-  );
-  late final List<Animation<Offset>> _slides = List.generate(
-    _fieldsIndex + 1,
-    (i) => Tween<Offset>(begin: const Offset(0, .12), end: Offset.zero).animate(
+      curve: Interval(start, end, curve: Curves.easeOut),
+    );
+  });
+  late final List<Animation<Offset>> _slides = List.generate(_fieldsIndex + 1, (
+    i,
+  ) {
+    final start = 0.30 + i * 0.06;
+    final end = min(0.55 + i * 0.06, 1.0);
+    return Tween<Offset>(begin: const Offset(0, .12), end: Offset.zero).animate(
       CurvedAnimation(
         parent: _inCtrl,
-        curve: Interval(
-          0.30 + i * 0.06,
-          0.55 + i * 0.06,
-          curve: Curves.easeOutBack,
-        ),
+        curve: Interval(start, end, curve: Curves.easeOutBack),
       ),
-    ),
-  );
+    );
+  });
   late final Animation<Offset> _shakeOffset = TweenSequence<Offset>([
     TweenSequenceItem(
       tween: Tween(begin: Offset.zero, end: const Offset(0.03, 0)),
@@ -356,8 +357,8 @@ class _RegisterScreenState extends State<RegisterScreen>
             child: _BlurCircle(
               diameter: 220,
               colors: [
-                kPurple.withOpacity(0.28),
-                kDeepPurple.withOpacity(0.18),
+                AppTheme.purple.withOpacity(0.28),
+                AppTheme.deepPurple.withOpacity(0.18),
               ],
             ),
           ),
@@ -367,8 +368,8 @@ class _RegisterScreenState extends State<RegisterScreen>
             child: _BlurCircle(
               diameter: 260,
               colors: [
-                kDeepPurple.withOpacity(0.22),
-                kPurple.withOpacity(0.18),
+                AppTheme.deepPurple.withOpacity(0.22),
+                AppTheme.purple.withOpacity(0.18),
               ],
             ),
           ),
@@ -384,7 +385,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                         onPressed: () => Navigator.pop(context),
                         icon: const Icon(
                           Icons.arrow_back_rounded,
-                          color: kDeepPurple,
+                          color: AppTheme.deepPurple,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -393,7 +394,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w800,
-                          color: kDeepPurple,
+                          color: AppTheme.deepPurple,
                         ),
                       ),
                     ],
@@ -408,7 +409,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                         children: [
                           ShaderMask(
                             shaderCallback: (r) => const LinearGradient(
-                              colors: [kDeepPurple, kPurple],
+                              colors: [AppTheme.deepPurple, AppTheme.purple],
                             ).createShader(r),
                             child: const Text(
                               'สร้างบัญชีใหม่',
@@ -595,7 +596,7 @@ class _LabeledField extends StatelessWidget {
                 : null,
             decoration: InputDecoration(
               prefixIcon: icon != null
-                  ? Icon(icon, color: _RegisterScreenState.kDeepPurple)
+                  ? Icon(icon, color: AppTheme.deepPurple)
                   : null,
               hintText: hint,
               filled: true,
@@ -607,16 +608,13 @@ class _LabeledField extends StatelessWidget {
               enabledBorder: OutlineInputBorder(
                 borderRadius: borderRadius,
                 borderSide: const BorderSide(
-                  color: _RegisterScreenState.kLavender,
+                  color: AppTheme.lavender,
                   width: 1.2,
                 ),
               ),
               focusedBorder: const OutlineInputBorder(
                 borderRadius: borderRadius,
-                borderSide: BorderSide(
-                  color: _RegisterScreenState.kDeepPurple,
-                  width: 1.6,
-                ),
+                borderSide: BorderSide(color: AppTheme.deepPurple, width: 1.6),
               ),
             ),
           ),
@@ -671,7 +669,7 @@ class _LabeledPasswordField extends StatelessWidget {
             decoration: InputDecoration(
               prefixIcon: const Icon(
                 Icons.lock_rounded,
-                color: _RegisterScreenState.kDeepPurple,
+                color: AppTheme.deepPurple,
               ),
               hintText: hint,
               filled: true,
@@ -683,22 +681,19 @@ class _LabeledPasswordField extends StatelessWidget {
               enabledBorder: OutlineInputBorder(
                 borderRadius: borderRadius,
                 borderSide: const BorderSide(
-                  color: _RegisterScreenState.kLavender,
+                  color: AppTheme.lavender,
                   width: 1.2,
                 ),
               ),
               focusedBorder: const OutlineInputBorder(
                 borderRadius: borderRadius,
-                borderSide: BorderSide(
-                  color: _RegisterScreenState.kDeepPurple,
-                  width: 1.6,
-                ),
+                borderSide: BorderSide(color: AppTheme.deepPurple, width: 1.6),
               ),
               suffixIcon: IconButton(
                 onPressed: onToggle,
                 icon: Icon(
                   obscure ? Icons.visibility : Icons.visibility_off,
-                  color: _RegisterScreenState.kDeepPurple,
+                  color: AppTheme.deepPurple,
                 ),
               ),
             ),
@@ -772,16 +767,13 @@ class _GradientButtonState extends State<_GradientButton>
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
               gradient: const LinearGradient(
-                colors: [
-                  _RegisterScreenState.kDeepPurple,
-                  _RegisterScreenState.kPurple,
-                ],
+                colors: [AppTheme.deepPurple, AppTheme.purple],
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: _RegisterScreenState.kDeepPurple.withOpacity(0.25),
+                  color: AppTheme.deepPurple.withOpacity(0.25),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
                 ),

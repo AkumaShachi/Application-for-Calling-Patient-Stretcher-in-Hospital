@@ -47,7 +47,9 @@ dependencies:
   flutter_sound: ^9.2.13        # ล่าสุดในสาย 9.x ยังอยู่ที่ 9.2.13 :contentReference[oaicite:1]{index=1}
   path_provider: ^2.1.5 
 
-  permission_handler: ^11.3.0        # ล่าสุด: 2.1.5 :contentReference[oaicite:2]{index=2}
+  permission_handler: ^11.3.0   # ล่าสุด: 2.1.5 :contentReference[oaicite:2]{index=2}
+
+  flutter_animate: ^4.5.0
 
 dev_dependencies:
   flutter_test:

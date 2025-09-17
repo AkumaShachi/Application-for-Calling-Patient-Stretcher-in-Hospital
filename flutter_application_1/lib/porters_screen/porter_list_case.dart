@@ -1,8 +1,9 @@
-// ignore_for_file: library_private_types_in_public_api, sized_box_for_whitespace, avoid_print
-
+// ignore_for_file: library_private_types_in_public_api, sized_box_for_whitespace, avoid_print, deprecated_member_use
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../design/theme.dart';
 import '../editprofilescreen.dart';
 import '../loginscreen.dart';
 import '../services/getcase_function.dart';
@@ -12,22 +13,16 @@ import 'porter_case_detail.dart';
 
 class PorterCaseListScreen extends StatefulWidget {
   const PorterCaseListScreen({super.key});
-
   @override
   _PorterCaseListScreenState createState() => _PorterCaseListScreenState();
 }
 
-class _PorterCaseListScreenState extends State<PorterCaseListScreen> {
+class _PorterCaseListScreenState extends State<PorterCaseListScreen>
+    with TickerProviderStateMixin {
   int selectedTabIndex = 0;
-  String fname = '';
-  String lname = '';
-  String username = '';
-  String email = '';
-  String phone = '';
-
+  String fname = '', lname = '', username = '', email = '', phone = '';
   File? _selectedImage;
   String? profileImageUrl;
-
   List<Map<String, dynamic>> cases = [];
 
   final List<String> tabs = [
@@ -37,10 +32,36 @@ class _PorterCaseListScreenState extends State<PorterCaseListScreen> {
     'เสร็จสิ้น',
   ];
 
+  late final AnimationController _fadeCtrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 700),
+  );
+
   @override
   void initState() {
     super.initState();
     _loadUserInfo();
+    _fadeCtrl.forward();
+  }
+
+  @override
+  void dispose() {
+    _fadeCtrl.dispose();
+    super.dispose();
+  }
+
+  /// ✅ ฟังก์ชัน map ชื่อแท็บไทย → key status จริง
+  String statusKey(String tabLabel) {
+    switch (tabLabel) {
+      case 'รอดำเนินการ':
+        return 'pending';
+      case 'กำลังดำเนินการ':
+        return 'in_progress';
+      case 'เสร็จสิ้น':
+        return 'completed';
+      default:
+        return '';
+    }
   }
 
   Future<void> _loadUserInfo() async {
@@ -59,10 +80,8 @@ class _PorterCaseListScreenState extends State<PorterCaseListScreen> {
   void loadCases() async {
     if (username.isEmpty) return;
     print('🔹 Loading cases for tab: ${tabs[selectedTabIndex]}');
-
     try {
       List<Map<String, dynamic>> fetchedCases = [];
-
       switch (tabs[selectedTabIndex]) {
         case 'ทั้งหมด':
           var activeCases = await GetcaseFunction.fetchMyCasesPorter(username);
@@ -74,8 +93,9 @@ class _PorterCaseListScreenState extends State<PorterCaseListScreen> {
         case 'รอดำเนินการ':
         case 'กำลังดำเนินการ':
           var myCases = await GetcaseFunction.fetchMyCasesPorter(username);
+          var selectedStatus = statusKey(tabs[selectedTabIndex]);
           fetchedCases = myCases
-              .where((c) => c['status'] == tabs[selectedTabIndex])
+              .where((c) => c['status'] == selectedStatus)
               .toList();
           break;
 
@@ -91,12 +111,11 @@ class _PorterCaseListScreenState extends State<PorterCaseListScreen> {
           break;
       }
 
-      // 🔹 Debug: print Map ของแต่ละเคส
       for (var c in fetchedCases) {
         print('🔹 Case Map: $c');
       }
-
       print('🔹 Total fetched cases: ${fetchedCases.length}');
+
       setState(() {
         cases = fetchedCases;
       });
@@ -108,16 +127,13 @@ class _PorterCaseListScreenState extends State<PorterCaseListScreen> {
   void handleCaseAction(Map<String, dynamic> item) async {
     final currentStatus = item['status']?.toString() ?? 'pending';
     final newStatus = currentStatus == 'pending' ? 'in_progress' : 'completed';
-
     try {
       final success = await UpdateCase.updateStatus(
         item['case_id'].toString(),
         newStatus,
         assignedPorter: username,
       );
-
       if (success) {
-        // ✅ อัปเดต status ของ item ใน memory เลย ไม่ต้องโหลดใหม่ทั้งหมด
         setState(() {
           item['status'] = newStatus;
         });
@@ -128,19 +144,18 @@ class _PorterCaseListScreenState extends State<PorterCaseListScreen> {
   }
 
   List<Map<String, dynamic>> get filteredCases {
-    final selectedStatus = tabs[selectedTabIndex];
-
+    final selectedStatus = statusKey(tabs[selectedTabIndex]);
     return cases.where((c) {
       final status = c['status']?.toString() ?? '';
       final assignedPorter = c['assigned_porter_username']?.toString() ?? '';
 
-      if (selectedStatus == 'ทั้งหมด') {
-        return status != ''; // เอาทุกเคส
-      } else if (selectedStatus == 'เสร็จสิ้น') {
+      if (selectedStatus.isEmpty) {
+        return status != '';
+      } else if (selectedStatus == 'completed') {
         return status == 'completed' && assignedPorter == username;
       } else {
         return status == selectedStatus &&
-            (selectedStatus == 'กำลังดำเนินการ'
+            (selectedStatus == 'in_progress'
                 ? assignedPorter == username
                 : true);
       }
@@ -149,160 +164,185 @@ class _PorterCaseListScreenState extends State<PorterCaseListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('รายการเคส'),
-        automaticallyImplyLeading: false,
-      ),
-      endDrawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
+    _buildDrawer(context);
+    return WillPopScope(
+      onWillPop: () async => false,
+      child: Scaffold(
+        extendBodyBehindAppBar: true,
+        appBar: AppBar(
+          title: const Text('รายการเคส'),
+          automaticallyImplyLeading: false,
+        ),
+        endDrawer: _buildDrawer(context),
+        body: Stack(
           children: [
             Container(
-              color: Colors.white,
-              padding: EdgeInsets.symmetric(vertical: 20),
-              child: Column(
-                children: [
-                  // Avatar วงกลม
-                  CircleAvatar(
-                    radius: 60,
-                    backgroundImage: _selectedImage != null
-                        ? FileImage(_selectedImage!) as ImageProvider
-                        : (profileImageUrl != null
-                              ? NetworkImage(profileImageUrl!)
-                              : null),
-                    child: (_selectedImage == null && profileImageUrl == null)
-                        ? Icon(Icons.person, size: 60)
-                        : null,
-                  ),
-
-                  SizedBox(height: 20),
-
-                  // ชื่อผู้ใช้
-                  ListTile(
-                    leading: const Icon(Icons.person),
-                    title: Text('ชื่อผู้ใช้: $fname $lname'),
-                  ),
-
-                  // อีเมล
-                  ListTile(
-                    leading: const Icon(Icons.email),
-                    title: Text('อีเมล: $email'),
-                  ),
-
-                  // เบอร์โทร
-                  ListTile(
-                    leading: const Icon(Icons.phone),
-                    title: Text('เบอร์โทร: $phone'),
-                  ),
-
-                  // ปุ่มแก้ไข
-                  ListTile(
-                    leading: const Icon(Icons.edit),
-                    title: const Text('แก้ไขข้อมูล'),
-                    onTap: () async {
-                      Navigator.pop(context); // ปิด Drawer ก่อน
-                      final updatedProfile = await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => EditProfileScreen(
-                            fname: fname,
-                            lname: lname,
-                            email: email,
-                            phone: phone,
-                            ImageUrl: profileImageUrl,
-                          ),
-                        ),
-                      );
-
-                      if (updatedProfile != null) {
-                        setState(() {
-                          fname = updatedProfile['fname_U'] ?? fname;
-                          lname = updatedProfile['lname_U'] ?? lname;
-                          email = updatedProfile['email_U'] ?? email;
-                          phone = updatedProfile['phone_U'] ?? phone;
-                          profileImageUrl =
-                              updatedProfile['profile_image'] ??
-                              profileImageUrl; // เพิ่มตรงนี้
-                        });
-                      }
-                    },
-                  ),
-
-                  // ปุ่มออกจากระบบ
-                  ListTile(
-                    leading: const Icon(Icons.logout),
-                    title: const Text('ออกจากระบบ'),
-                    onTap: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => LoginScreen()),
-                      );
-                    },
-                  ),
-                ],
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment(-1, -1),
+                  end: Alignment(1, 1),
+                  colors: [
+                    Theme.of(context).scaffoldBackgroundColor,
+                    AppTheme.lavender,
+                  ],
+                ),
+              ),
+            ),
+            FadeTransition(
+              opacity: _fadeCtrl,
+              child: Padding(
+                padding: const EdgeInsets.only(top: kToolbarHeight + 50),
+                child: Column(
+                  children: [
+                    _buildTabs(),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.only(bottom: 24),
+                        itemCount: filteredCases.length,
+                        itemBuilder: (context, i) {
+                          final item = filteredCases[i];
+                          return _GlassCard(
+                            child: AnimatedCaseCard(
+                              item: item,
+                              username: username,
+                              onAction: handleCaseAction,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
 
-      body: Column(
+  Drawer _buildDrawer(BuildContext context) {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
         children: [
-          SizedBox(height: 12),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: EdgeInsets.symmetric(horizontal: 12),
-            child: Row(
-              children: List.generate(tabs.length, (index) {
-                final isSelected = selectedTabIndex == index;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        selectedTabIndex = index;
-                      });
-                      loadCases(); // โหลดเคสใหม่ตาม tab
-                    },
-                    child: AnimatedContainer(
-                      duration: Duration(milliseconds: 300),
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isSelected ? Colors.blue : Colors.grey.shade200,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        index == 0 ? 'ทั้งหมด' : tabs[index],
-                        style: TextStyle(
-                          color: isSelected ? Colors.white : Colors.black87,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }),
-            ),
+          const SizedBox(height: 30),
+          CircleAvatar(
+            radius: 60,
+            backgroundImage: _selectedImage != null
+                ? FileImage(_selectedImage!) as ImageProvider
+                : (profileImageUrl != null
+                      ? NetworkImage(profileImageUrl!)
+                      : null),
+            child: (_selectedImage == null && profileImageUrl == null)
+                ? const Icon(Icons.person, size: 60)
+                : null,
           ),
-          SizedBox(height: 8),
-          Expanded(
-            child: ListView.builder(
-              itemCount: filteredCases.length,
-              itemBuilder: (context, index) {
-                final item = filteredCases[index];
-                return AnimatedCaseCard(
-                  item: item,
-                  username: username,
-                  onAction: handleCaseAction, // ใช้ฟังก์ชันเดียว
+          const SizedBox(height: 20),
+          ListTile(
+            leading: const Icon(Icons.person),
+            title: Text('$fname $lname'),
+          ),
+          ListTile(leading: const Icon(Icons.email), title: Text(email)),
+          ListTile(leading: const Icon(Icons.phone), title: Text(phone)),
+          ListTile(
+            leading: const Icon(Icons.edit),
+            title: const Text('แก้ไขข้อมูล'),
+            onTap: () async {
+              Navigator.pop(context);
+              final updated = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => EditProfileScreen(
+                    fname: fname,
+                    lname: lname,
+                    email: email,
+                    phone: phone,
+                    ImageUrl: profileImageUrl,
+                  ),
+                ),
+              );
+              if (updated != null) {
+                setState(() {
+                  fname = updated['fname_U'] ?? fname;
+                  lname = updated['lname_U'] ?? lname;
+                  email = updated['email_U'] ?? email;
+                  phone = updated['phone_U'] ?? phone;
+                  profileImageUrl = updated['profile_image'] ?? profileImageUrl;
+                });
+              }
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.logout),
+            title: const Text('ออกจากระบบ'),
+            onTap: () async {
+              final prefs = await SharedPreferences.getInstance();
+
+              // 🗑️ เคลียร์ข้อมูลผู้ใช้ที่บันทึกไว้
+              await prefs.clear();
+
+              // 🗑️ ถ้าไม่อยากลบทุกอย่าง แค่ลบเฉพาะที่เกี่ยวกับการจำรหัสผ่านก็ได้
+              // await prefs.remove('saved_username');
+              // await prefs.remove('saved_password');
+
+              if (context.mounted) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
                 );
-              },
-            ),
+              }
+            },
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTabs() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Row(
+        children: List.generate(tabs.length, (index) {
+          final isSelected = selectedTabIndex == index;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: GestureDetector(
+              onTap: () {
+                setState(() => selectedTabIndex = index);
+                loadCases();
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: isSelected ? AppTheme.deepPurple : Colors.white70,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    if (isSelected)
+                      BoxShadow(
+                        color: AppTheme.deepPurple.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                  ],
+                ),
+                child: Text(
+                  tabs[index],
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : Colors.black87,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
       ),
     );
   }
@@ -311,8 +351,7 @@ class _PorterCaseListScreenState extends State<PorterCaseListScreen> {
 class AnimatedCaseCard extends StatelessWidget {
   final Map<String, dynamic> item;
   final String username;
-  final void Function(Map<String, dynamic> item)?
-  onAction; // callback เวลากดปุ่ม
+  final void Function(Map<String, dynamic> item)? onAction;
 
   const AnimatedCaseCard({
     required this.item,
@@ -325,7 +364,6 @@ class AnimatedCaseCard extends StatelessWidget {
     final createdTime = DateTime.parse(createdAt).toLocal();
     final now = DateTime.now();
     final diff = now.difference(createdTime);
-
     if (diff.inSeconds < 60) return '${diff.inSeconds}s';
     if (diff.inMinutes < 60) return '${diff.inMinutes}m';
     if (diff.inHours < 24) return '${diff.inHours}h';
@@ -335,7 +373,6 @@ class AnimatedCaseCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ อ่านค่า status ตรงจาก item ทุกครั้ง ไม่เก็บค้างใน state
     final status = item['status']?.toString() ?? 'pending';
     final isWaiting = status == 'pending';
     final isProcessing = status == 'in_progress';
@@ -355,7 +392,7 @@ class AnimatedCaseCard extends StatelessWidget {
             BoxShadow(
               color: Colors.black12,
               blurRadius: 6,
-              offset: Offset(0, 3),
+              offset: const Offset(0, 3),
             ),
           ],
         ),
@@ -438,7 +475,7 @@ class AnimatedCaseCard extends StatelessWidget {
 
             const SizedBox(height: 12),
 
-            // 🔹 ปุ่ม Action (ตามสถานะ)
+            // 🔹 ปุ่ม Action
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -452,12 +489,11 @@ class AnimatedCaseCard extends StatelessWidget {
                       ),
                     );
                   },
-                  child: Text(
+                  child: const Text(
                     'ดูรายละเอียด',
                     style: TextStyle(color: Colors.blue),
                   ),
                 ),
-
                 if (!isFinishing)
                   ElevatedButton(
                     onPressed: () async {
@@ -476,6 +512,38 @@ class AnimatedCaseCard extends StatelessWidget {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GlassCard extends StatelessWidget {
+  final Widget child;
+  const _GlassCard({required this.child});
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.65),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withOpacity(0.6)),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.purple.withOpacity(0.12),
+                  blurRadius: 18,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: child,
+          ),
         ),
       ),
     );

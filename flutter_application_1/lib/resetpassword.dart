@@ -3,6 +3,8 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
+import 'design/theme.dart';
+
 import 'services/forget_functions.dart';
 import 'services/reset_functions.dart';
 
@@ -27,14 +29,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
   bool _emailSent = false;
   int _emailLockSeconds = 0;
 
-  // โทนสีหลัก
-  static const Color kDeepPurple = Color(0xFF5B2EFF);
-  static const Color kPurple = Color(0xFF8C6CFF);
-  static const Color kLavender = Color(0xFFEDE9FF);
-
   // --------- Animations ----------
-  late final AnimationController _inCtrl; // entrance (stagger)
-  late final AnimationController _shakeCtrl; // error shake
+  late final AnimationController _inCtrl;
+  late final AnimationController _shakeCtrl;
 
   late final Animation<double> _titleFade;
   late final Animation<Offset> _titleSlide;
@@ -212,7 +209,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
       return;
     }
     // เช็ครูปแบบรหัสผ่าน
-    // อย่างน้อย 8 ตัวอักษร, ตัวเลข, ตัวอักษรพิเศษ, ตัวพิมพ์ใหญ่-เล็ก
     final passwordRegex = RegExp(
       r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#\$%^&*(),.?":{}|<>]).{8,}$',
     );
@@ -229,7 +225,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
       return;
     }
 
-    // เช็คว่ารหัสผ่านตรงกับยืนยันรหัสผ่าน
     if (newPass != confirm) {
       _shakeCtrl.forward(from: 0);
       ScaffoldMessenger.of(
@@ -247,7 +242,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
       "confirm_password": confirm,
     };
 
-    // await backend call
     final result = await ResetFunctions.resetPassword(resetpass);
 
     setState(() => _loading = false);
@@ -282,12 +276,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
       return;
     }
 
-    // เริ่มล็อก UI ทันทีแล้วค่อยเรียกส่ง — หากส่งไม่สำเร็จให้ยกเลิกล็อก
     _startEmailLock(minutes: 30);
 
     final success = await _sendReset();
     if (!success) {
-      // ยกเลิกล็อกถ้าเกิดข้อผิดพลาด
       _emailLockTimer?.cancel();
       if (mounted) {
         setState(() {
@@ -322,15 +314,16 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
     final theme = Theme.of(context);
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
-          // Gradient background
+          // Gradient background (use theme)
           Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment(-1, -1),
                 end: Alignment(1, 1),
-                colors: [Color(0xFFF7F5FF), Color(0xFFEDE9FF)],
+                colors: [theme.scaffoldBackgroundColor, AppTheme.lavender],
               ),
             ),
           ),
@@ -342,8 +335,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
             child: _BlurCircle(
               diameter: 220,
               colors: [
-                kPurple.withOpacity(0.28),
-                kDeepPurple.withOpacity(0.18),
+                AppTheme.purple.withOpacity(0.28),
+                AppTheme.deepPurple.withOpacity(0.18),
               ],
             ),
           ),
@@ -353,8 +346,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
             child: _BlurCircle(
               diameter: 260,
               colors: [
-                kDeepPurple.withOpacity(0.22),
-                kPurple.withOpacity(0.18),
+                AppTheme.deepPurple.withOpacity(0.22),
+                AppTheme.purple.withOpacity(0.18),
               ],
             ),
           ),
@@ -372,17 +365,22 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                         onPressed: () => Navigator.pop(context),
                         icon: const Icon(
                           Icons.arrow_back_rounded,
-                          color: kDeepPurple,
+                          color: AppTheme.deepPurple,
                         ),
                       ),
                       const SizedBox(width: 8),
-                      const Text(
+                      Text(
                         'Reset Password',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          color: kDeepPurple,
-                        ),
+                        style:
+                            theme.textTheme.headlineSmall?.copyWith(
+                              color: AppTheme.deepPurple,
+                              fontWeight: FontWeight.w800,
+                            ) ??
+                            TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                              color: AppTheme.deepPurple,
+                            ),
                       ),
                     ],
                   ),
@@ -398,15 +396,20 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                         children: [
                           ShaderMask(
                             shaderCallback: (r) => const LinearGradient(
-                              colors: [kDeepPurple, kPurple],
+                              colors: [AppTheme.deepPurple, AppTheme.purple],
                             ).createShader(r),
-                            child: const Text(
+                            child: Text(
                               'สร้างรหัสผ่านใหม่',
-                              style: TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white,
-                              ),
+                              style:
+                                  theme.textTheme.headlineLarge?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                  ) ??
+                                  const TextStyle(
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                  ),
                             ),
                           ),
                           const SizedBox(height: 6),
@@ -459,8 +462,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                                                       vertical: 8,
                                                     ),
                                                 backgroundColor:
-                                                    _ResetPasswordScreenState
-                                                        .kDeepPurple,
+                                                    AppTheme.deepPurple,
                                                 shape: RoundedRectangleBorder(
                                                   borderRadius:
                                                       BorderRadius.circular(8),
@@ -496,7 +498,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                                     suffix: IconButton(
                                       icon: const Icon(
                                         Icons.content_copy,
-                                        color: kDeepPurple,
+                                        color: Colors.white,
                                       ),
                                       onPressed: () {
                                         // copy token to clipboard
@@ -658,7 +660,7 @@ class _GlassCard extends StatelessWidget {
             border: Border.all(color: Colors.white.withOpacity(0.6)),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF5B2EFF).withOpacity(0.10),
+                color: AppTheme.deepPurple.withOpacity(0.10),
                 blurRadius: 24,
                 spreadRadius: 2,
                 offset: const Offset(0, 10),
@@ -709,26 +711,18 @@ class _LabeledField extends StatelessWidget {
             controller: controller,
             keyboardType: keyboard,
             decoration: InputDecoration(
-              prefixIcon: Icon(
-                icon,
-                color: _ResetPasswordScreenState.kDeepPurple,
-              ),
+              prefixIcon: Icon(icon, color: AppTheme.deepPurple),
               hintText: hint,
               suffixIcon: suffix,
               filled: true,
               fillColor: Colors.white,
               enabledBorder: OutlineInputBorder(
                 borderRadius: borderRadius,
-                borderSide: const BorderSide(
-                  color: _ResetPasswordScreenState.kLavender,
-                ),
+                borderSide: BorderSide(color: AppTheme.lavender),
               ),
-              focusedBorder: const OutlineInputBorder(
+              focusedBorder: OutlineInputBorder(
                 borderRadius: borderRadius,
-                borderSide: BorderSide(
-                  color: _ResetPasswordScreenState.kDeepPurple,
-                  width: 1.6,
-                ),
+                borderSide: BorderSide(color: AppTheme.deepPurple, width: 1.6),
               ),
             ),
           ),
@@ -775,7 +769,7 @@ class _LabeledPasswordField extends StatelessWidget {
             decoration: InputDecoration(
               prefixIcon: const Icon(
                 Icons.lock_rounded,
-                color: _ResetPasswordScreenState.kDeepPurple,
+                color: AppTheme.deepPurple,
               ),
               hintText: hint,
               filled: true,
@@ -783,22 +777,17 @@ class _LabeledPasswordField extends StatelessWidget {
               suffixIcon: IconButton(
                 icon: Icon(
                   obscure ? Icons.visibility_off : Icons.visibility,
-                  color: _ResetPasswordScreenState.kDeepPurple,
+                  color: AppTheme.deepPurple,
                 ),
                 onPressed: onToggle,
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: borderRadius,
-                borderSide: const BorderSide(
-                  color: _ResetPasswordScreenState.kLavender,
-                ),
+                borderSide: BorderSide(color: AppTheme.lavender),
               ),
-              focusedBorder: const OutlineInputBorder(
+              focusedBorder: OutlineInputBorder(
                 borderRadius: borderRadius,
-                borderSide: BorderSide(
-                  color: _ResetPasswordScreenState.kDeepPurple,
-                  width: 1.6,
-                ),
+                borderSide: BorderSide(color: AppTheme.deepPurple, width: 1.6),
               ),
             ),
           ),
@@ -852,11 +841,11 @@ class _GradientButtonState extends State<_GradientButton>
 
     return GestureDetector(
       onTapDown: (_) {
-        if (widget.onTap != null) _pressCtrl.forward();
+        if (widget.onTap != null && !widget.loading) _pressCtrl.forward();
       },
       onTapUp: (_) => _pressCtrl.reverse(),
       onTapCancel: () => _pressCtrl.reverse(),
-      onTap: widget.onTap,
+      onTap: widget.loading ? null : widget.onTap,
       child: ScaleTransition(
         scale: _scale,
         child: Opacity(
@@ -869,18 +858,13 @@ class _GradientButtonState extends State<_GradientButton>
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
               gradient: const LinearGradient(
-                colors: [
-                  _ResetPasswordScreenState.kDeepPurple,
-                  _ResetPasswordScreenState.kPurple,
-                ],
+                colors: [AppTheme.deepPurple, AppTheme.purple],
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: _ResetPasswordScreenState.kDeepPurple.withOpacity(
-                    0.25,
-                  ),
+                  color: AppTheme.deepPurple.withOpacity(0.25),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
                 ),
