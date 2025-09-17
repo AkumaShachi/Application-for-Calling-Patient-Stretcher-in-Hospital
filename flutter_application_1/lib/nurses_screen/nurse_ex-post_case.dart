@@ -1,4 +1,4 @@
-// ignore_for_file: non_constant_identifier_names, file_names
+// ignore_for_file: non_constant_identifier_names, file_names, annotate_overrides, deprecated_member_use
 import 'dart:ui';
 
 import 'package:flutter/material.dart';

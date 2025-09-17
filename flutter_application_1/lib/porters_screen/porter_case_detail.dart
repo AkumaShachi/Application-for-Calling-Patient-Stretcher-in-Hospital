@@ -50,7 +50,7 @@ class _PorterCaseDetailScreenState extends State<PorterCaseDetailScreen>
     return Scaffold(
       appBar: AppBar(title: const Text('รายละเอียดเคส')),
       body: Container(
-        color: theme.colorScheme.background,
+        color: theme.colorScheme.surface,
         padding: const EdgeInsets.all(20),
         child: FadeTransition(
           opacity: _fade,
