@@ -41,10 +41,12 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen>
     vsync: this,
     duration: const Duration(milliseconds: 800),
   );
+
   late final Animation<Offset> _titleSlide = Tween<Offset>(
     begin: const Offset(-1.2, 0),
     end: Offset.zero,
   ).animate(CurvedAnimation(parent: _inCtrl, curve: Curves.easeOutBack));
+
   late final Animation<double> _titleFade = CurvedAnimation(
     parent: _inCtrl,
     curve: Curves.easeOut,

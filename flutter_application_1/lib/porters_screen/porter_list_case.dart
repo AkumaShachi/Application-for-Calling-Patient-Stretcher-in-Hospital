@@ -8,7 +8,7 @@ import '../editprofilescreen.dart';
 import '../loginscreen.dart';
 import '../services/getcase_function.dart';
 import '../services/recordhistory_function.dart';
-import '../services/ีupdatecase_function.dart';
+import '../services/updatecase_function.dart';
 import 'porter_case_detail.dart';
 
 class PorterCaseListScreen extends StatefulWidget {

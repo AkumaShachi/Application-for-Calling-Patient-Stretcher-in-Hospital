@@ -5,7 +5,7 @@ const pool = mysql.createPool({
   user: 'root',
   // หากไม่มีรหัสผ่าน
   // password: 'your_password',
-  database: 'test',
+  database: 'application',
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
