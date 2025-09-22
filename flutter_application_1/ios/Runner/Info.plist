@@ -45,5 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	
+	<!-- ใส่ permission ไมโครโฟนตรงนี้ -->
+    <key>NSMicrophoneUsageDescription</key>
+    <string>แอปต้องการเข้าถึงไมโครโฟนเพื่อบันทึกเสียง</string>
 </dict>
 </plist>
