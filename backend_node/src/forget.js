@@ -1,4 +1,4 @@
-require('dotenv').config();
+﻿require('dotenv').config();
 const express = require('express');
 const router = express.Router();
 const fetch = require('node-fetch');
@@ -6,13 +6,23 @@ const bcrypt = require('bcrypt');
 const pool = require('./Database');
 
 router.post('/send-email', async (req, res) => {
-  const { user_email } = req.body;
-  if (!user_email) return res.status(400).json({ success: false, error: 'Missing user_email' });
+  const emailRaw = typeof req.body.user_email === 'string' ? req.body.user_email.trim() : '';
+
+  if (!emailRaw) {
+    return res.status(400).json({ success: false, error: 'Missing user_email' });
+  }
 
   try {
-    const [users] = await pool.query('SELECT num_U FROM Users WHERE email_U = ?', [user_email]);
-    if (!users.length) return res.status(404).json({ success: false, error: 'User not found' });
-    const user_id = users[0].num_U;
+    const [users] = await pool.query(
+      'SELECT user_num FROM users WHERE user_email = ?',
+      [emailRaw]
+    );
+
+    if (!users.length) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    const userNum = users[0].user_num;
 
     const token = Math.floor(100000 + Math.random() * 900000).toString();
     const now = new Date();
@@ -20,9 +30,10 @@ router.post('/send-email', async (req, res) => {
 
     const hashedToken = await bcrypt.hash(token, 10);
 
-    await pool.query('DELETE FROM PasswordResets WHERE user_id = ?', [user_id]);
-    await pool.query('INSERT INTO PasswordResets (user_id, reset_token_hash, token_expiry) VALUES (?, ?, ?)',
-      [user_id, hashedToken, expiry]
+    await pool.query('DELETE FROM passwordresets WHERE pr_user_id = ?', [userNum]);
+    await pool.query(
+      'INSERT INTO passwordresets (pr_user_id, pr_reset_token_hash, pr_token_expiry, pr_used) VALUES (?, ?, ?, 0)',
+      [userNum, hashedToken, expiry]
     );
 
     const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
@@ -34,16 +45,18 @@ router.post('/send-email', async (req, res) => {
         user_id: process.env.EMAILJS_USER_ID,
         accessToken: process.env.EMAILJS_ACCESS_TOKEN,
         template_params: {
-          user_email,
+          user_email: emailRaw,
           token_passcode: token,
           token_time_create: formatDateToCustom(now),
-          token_delete_at: formatDateToCustom(expiry),
-        },
-      }),
+          token_delete_at: formatDateToCustom(expiry)
+        }
+      })
     });
 
     const text = await response.text();
-    if (!response.ok) throw new Error(text);
+    if (!response.ok) {
+      throw new Error(text || 'Failed to send email');
+    }
 
     res.json({ success: true, message: 'Email sent successfully' });
   } catch (err) {

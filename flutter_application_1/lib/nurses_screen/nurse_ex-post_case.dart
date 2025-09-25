@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../design/theme.dart';
-import '../services/addcase_function.dart';
+import '.././services/Cases/case_add_function.dart';
 import 'nurse_list_case.dart';
 
 class NurseExCaseScreen extends StatefulWidget {
@@ -201,7 +201,7 @@ class _NurseExCaseScreenState extends State<NurseExCaseScreen>
       'requestedBy': id,
       'equipmentIds': widget.equipments,
     };
-    await AddcaseFunction.saveCase(caseData);
+    await CaseAddService.createCase(caseData);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('บันทึกข้อมูลเคสเรียบร้อยแล้ว')),

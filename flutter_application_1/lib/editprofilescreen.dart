@@ -4,11 +4,12 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'design/theme.dart';
 
-import 'services/editprofile_function.dart';
-import 'services/updateImage_function.dart';
+import './services/Profile/profile_get_function.dart';
+import './services/Profile/profile_update_function.dart';
 
 class EditProfileScreen extends StatefulWidget {
   final String fname;
@@ -39,6 +40,9 @@ class _EditProfileScreenState extends State<EditProfileScreen>
 
   File? _selectedImage;
   String? profileImageUrl;
+  final ImagePicker _imagePicker = ImagePicker();
+  bool _isSaving = false;
+  bool _isLoadingProfile = false;
 
   late final AnimationController _inCtrl = AnimationController(
     vsync: this,
@@ -64,6 +68,10 @@ class _EditProfileScreenState extends State<EditProfileScreen>
     _phoneController = TextEditingController(text: widget.phone);
     profileImageUrl = widget.ImageUrl;
 
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadProfile();
+    });
+
     Future.delayed(const Duration(milliseconds: 300), _inCtrl.forward);
   }
 
@@ -78,47 +86,176 @@ class _EditProfileScreenState extends State<EditProfileScreen>
   }
 
   Future<void> _saveProfile() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    final username = prefs.getString('id') ?? '';
-    if (username.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("ไม่พบข้อมูลผู้ใช้")));
+    if (_isSaving) {
       return;
     }
 
-    final profileData = {
-      "fname_U": _fnameController.text,
-      "lname_U": _lnameController.text,
-      "email_U": _emailController.text,
-      "phone_U": _phoneController.text,
-    };
-
-    await updateProfileWithImage(
-      username,
-      profileData.map((k, v) => MapEntry(k, v.toString())),
-      _selectedImage,
-      EditProfileFunction.baseUrl!,
-    ).then((url) {
-      if (url != null) {
-        setState(() {
-          profileImageUrl = url;
-          _selectedImage = null;
-        });
-        prefs.setString('profile_image', url);
+    final prefs = await SharedPreferences.getInstance();
+    final username = prefs.getString('id') ?? '';
+    if (username.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('��辺�����ż����')));
       }
+      return;
+    }
+
+    final fname = _fnameController.text.trim();
+    final lname = _lnameController.text.trim();
+    final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
+
+    setState(() {
+      _isSaving = true;
     });
 
-    await prefs.setString('fname_U', _fnameController.text);
-    await prefs.setString('lname_U', _lnameController.text);
-    await prefs.setString('email_U', _emailController.text);
-    await prefs.setString('phone_U', _phoneController.text);
+    try {
+      final result = await ProfileUpdateService.updateProfile(
+        username,
+        fname: fname,
+        lname: lname,
+        email: email,
+        phone: phone,
+        profileImage: _selectedImage,
+      );
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("บันทึกข้อมูลสำเร็จ")));
+      final profile = result['profile'] as Map<String, dynamic>? ?? {};
+      final updatedImage = profile['profile_image'] as String?;
+      final resolvedImage = (updatedImage != null && updatedImage.isNotEmpty)
+          ? updatedImage
+          : profileImageUrl;
 
-    Navigator.pop(context, {...profileData, 'profile_image': profileImageUrl});
+      await prefs.setString('fname_U', profile['fname']?.toString() ?? fname);
+      await prefs.setString('lname_U', profile['lname']?.toString() ?? lname);
+      await prefs.setString('email_U', profile['email']?.toString() ?? email);
+      await prefs.setString('phone_U', profile['phone']?.toString() ?? phone);
+      if (resolvedImage != null) {
+        await prefs.setString('profile_image', resolvedImage);
+      } else {
+        await prefs.remove('profile_image');
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        profileImageUrl = resolvedImage;
+        _selectedImage = null;
+      });
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('�ѹ�֡�����������')));
+
+      Navigator.pop(context, {
+        'fname_U': prefs.getString('fname_U'),
+        'lname_U': prefs.getString('lname_U'),
+        'email_U': prefs.getString('email_U'),
+        'phone_U': prefs.getString('phone_U'),
+        'profile_image': resolvedImage,
+      });
+    } catch (error) {
+      final message = error.toString().replaceFirst('Exception: ', '');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message.isNotEmpty ? message : '�ѹ�֡��������������'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      } else {
+        _isSaving = false;
+      }
+    }
+  }
+
+  Future<void> _loadProfile() async {
+    if (_isLoadingProfile) {
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final username = prefs.getString('id') ?? '';
+    if (username.isEmpty) {
+      return;
+    }
+
+    if (mounted) {
+      setState(() {
+        _isLoadingProfile = true;
+      });
+    } else {
+      _isLoadingProfile = true;
+    }
+
+    try {
+      final profile = await ProfileGetService.fetchProfile(username);
+      final fetchedFname = profile['fname']?.toString() ?? '';
+      final fetchedLname = profile['lname']?.toString() ?? '';
+      final fetchedEmail = profile['email']?.toString() ?? '';
+      final fetchedPhone = profile['phone']?.toString() ?? '';
+      final fetchedImage = profile['profile_image']?.toString();
+
+      if (mounted) {
+        setState(() {
+          _fnameController.text = fetchedFname;
+          _lnameController.text = fetchedLname;
+          _emailController.text = fetchedEmail;
+          _phoneController.text = fetchedPhone;
+          profileImageUrl = (fetchedImage != null && fetchedImage.isNotEmpty)
+              ? fetchedImage
+              : null;
+        });
+      } else {
+        _fnameController.text = fetchedFname;
+        _lnameController.text = fetchedLname;
+        _emailController.text = fetchedEmail;
+        _phoneController.text = fetchedPhone;
+        profileImageUrl = (fetchedImage != null && fetchedImage.isNotEmpty)
+            ? fetchedImage
+            : null;
+      }
+
+      await prefs.setString('fname_U', fetchedFname);
+      await prefs.setString('lname_U', fetchedLname);
+      await prefs.setString('email_U', fetchedEmail);
+      await prefs.setString('phone_U', fetchedPhone);
+      if (fetchedImage != null && fetchedImage.isNotEmpty) {
+        await prefs.setString('profile_image', fetchedImage);
+      } else {
+        await prefs.remove('profile_image');
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('��Ŵ��������������')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingProfile = false;
+        });
+      } else {
+        _isLoadingProfile = false;
+      }
+    }
+  }
+
+  Future<File?> _pickImage() async {
+    final picked = await _imagePicker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1280,
+      imageQuality: 85,
+    );
+    return picked != null ? File(picked.path) : null;
   }
 
   @override
@@ -190,12 +327,16 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                     children: [
                       Center(
                         child: InkWell(
-                          onTap: () async {
-                            final image = await pickImage();
-                            if (image != null) {
-                              setState(() => _selectedImage = image);
-                            }
-                          },
+                          onTap: (_isSaving || _isLoadingProfile)
+                              ? null
+                              : () async {
+                                  final image = await _pickImage();
+                                  if (image != null) {
+                                    setState(() {
+                                      _selectedImage = image;
+                                    });
+                                  }
+                                },
                           child: CircleAvatar(
                             radius: 60,
                             backgroundImage: _selectedImage != null
@@ -228,13 +369,27 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                         keyboard: TextInputType.phone,
                       ),
                       const SizedBox(height: 28),
-                      _GradientButton(text: "บันทึก", onTap: _saveProfile),
+                      _GradientButton(
+                        text: "บันทึก",
+                        onTap: (_isSaving || _isLoadingProfile)
+                            ? null
+                            : _saveProfile,
+                      ),
                     ],
                   ),
                 ),
               ],
             ),
           ),
+          if (_isSaving || _isLoadingProfile)
+            Positioned.fill(
+              child: AbsorbPointer(
+                child: Container(
+                  color: Colors.black.withOpacity(0.12),
+                  child: const Center(child: CircularProgressIndicator()),
+                ),
+              ),
+            ),
         ],
       ),
     );

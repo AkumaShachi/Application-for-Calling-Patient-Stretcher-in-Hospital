@@ -5,11 +5,11 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-import '../services/getEquipments.dart';
-import '../services/getStretcher.dart';
+import '../services/Equipments/equipment_get_function.dart';
+import '../services/Stretchers/stretcher_get_function.dart';
 
 import '../services/user_prefs.dart';
-import '../services/mic_function.dart';
+import '../services/Microphone/mic_function.dart';
 import '../design/theme.dart';
 import 'nurse_ex-post_case.dart';
 
@@ -385,7 +385,7 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen>
             context: context,
             builder: (context) {
               return FutureBuilder<List<Map<String, dynamic>>>(
-                future: GetStretcher.getStretcherTypes(),
+                future: StretcherGetService.fetchStretchers(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
@@ -444,7 +444,7 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen>
                 context: context,
                 builder: (context) {
                   return FutureBuilder<List<Map<String, dynamic>>>(
-                    future: GetEquipments.getEquipments(),
+                    future: EquipmentGetService.fetchEquipments(),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(child: CircularProgressIndicator());

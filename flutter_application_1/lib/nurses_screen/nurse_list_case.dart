@@ -9,7 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../editprofilescreen.dart';
 import '../loginscreen.dart';
 import 'nurse_add_case.dart';
-import '../services/getcase_function.dart';
+import '.././services/Cases/case_get_function.dart';
 import '../design/theme.dart';
 
 class NurseListCaseScreen extends StatefulWidget {
@@ -69,8 +69,8 @@ class _NurseListCaseScreenState extends State<NurseListCaseScreen>
 
   Future<void> _fetchCases() async {
     try {
-      final fetchedAll = await GetcaseFunction.fetchAllCasesNurse();
-      final fetchedMy = await GetcaseFunction.fetchMyCasesNurse(username);
+      final fetchedAll = await CaseGetService.fetchAllCasesForNurse();
+      final fetchedMy = await CaseGetService.fetchCasesForNurse(username);
       setState(() {
         allCases = fetchedAll;
         myCases = fetchedMy;

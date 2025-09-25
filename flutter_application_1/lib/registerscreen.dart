@@ -139,14 +139,21 @@ class _RegisterScreenState extends State<RegisterScreen>
     }
 
     // ตรวจ token เพื่อเลือก role
-    if (_TokenCtrl.text == "123456") {
-      selectedRole = "porter"; // ตรงกับ DB
-    } else if (_TokenCtrl.text == "654321") {
-      selectedRole = "nurse"; // ตรงกับ DB
-    } else {
-      _shakeCtrl.forward(from: 0);
-      _showMsg('รหัสพนักงานไม่ถูกต้อง');
-      return;
+    final token = _TokenCtrl.text.trim();
+    switch (token) {
+      case '123456':
+        selectedRole = 'porter';
+        break;
+      case '654321':
+        selectedRole = 'nurse';
+        break;
+      case '111111':
+        selectedRole = 'admin';
+        break;
+      default:
+        _shakeCtrl.forward(from: 0);
+        _showMsg('รหัสพนักงานไม่ถูกต้อง');
+        return;
     }
 
     // ตรวจรหัสผ่านตรงกัน
@@ -163,17 +170,24 @@ class _RegisterScreenState extends State<RegisterScreen>
 
     setState(() => _loading = false);
 
-    var fullName = _nameCtrl.text.split(' ');
+    final trimmedId = _idCtrl.text.trim();
+    final trimmedPhone = _phoneCtrl.text.trim();
+    final trimmedEmail = _emailCtrl.text.trim();
+    final trimmedUsername = _usernameCtrl.text.trim();
+    final trimmedName = _nameCtrl.text.trim();
+    final nameParts = trimmedName.isNotEmpty ? trimmedName.split(RegExp(r'\s+')) : <String>[];
+    final fname = nameParts.isNotEmpty ? nameParts.first : '';
+    final lname = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
 
-    // data เบื้องต้น (user)
-    var data = {
-      "id_U": _idCtrl.text,
-      "fname_U": fullName[0],
-      "lname_U": fullName.length > 1 ? fullName[1] : '',
-      "phone_U": _phoneCtrl.text,
-      "email_U": _emailCtrl.text,
+    // เตรียมข้อมูลส่งไป backend
+    final data = {
+      "id_U": trimmedId,
+      "fname_U": fname,
+      "lname_U": lname,
+      "phone_U": trimmedPhone,
+      "email_U": trimmedEmail,
       "role_U": selectedRole,
-      "username": _usernameCtrl.text,
+      "username": trimmedUsername,
       "password": _passwordCtrl.text,
     };
 
@@ -189,76 +203,7 @@ class _RegisterScreenState extends State<RegisterScreen>
     }
   }
 
-  Future<void> submit() async {
-    // ตรวจ form
-    if (!_formKey.currentState!.validate()) {
-      _shakeCtrl.forward(from: 0);
-      _showMsg('กรุณากรอกข้อมูลให้ครบถ้วน');
-      return;
-    }
-    if (_passwordCtrl.text.length < 6) {
-      _shakeCtrl.forward(from: 0);
-      _showMsg('รหัสผ่านอย่างน้อย 6 ตัวอักษร');
-      return;
-    }
-    if (_TokenCtrl.text == "123456" || _TokenCtrl.text == "654321") {
-      if (_TokenCtrl.text == "123456") {
-        selectedRole = "porter";
-      } else if (_TokenCtrl.text == "654321") {
-        selectedRole = "nurse";
-      }
-    } else {
-      _shakeCtrl.forward(from: 0);
-      _showMsg('รหัสพนักงานไม่ถูกต้อง');
-      return;
-    }
-    if (_passwordCtrl.text != _confirmCtrl.text) {
-      _shakeCtrl.forward(from: 0);
-      _showMsg('รหัสผ่านไม่ตรงกัน');
-      return;
-    }
 
-    // mock loading
-    setState(() => _loading = true);
-    await Future.delayed(const Duration(milliseconds: 1000));
-    if (!mounted) return;
-
-    setState(() => _loading = false);
-    _showMsg('ลงทะเบียนสำเร็จ!');
-    await Future.delayed(const Duration(milliseconds: 350));
-    if (!mounted) return;
-
-    var fullName = _nameCtrl.text.split(' ');
-
-    var data = {
-      "id_U": _idCtrl.text,
-      "fname_U": fullName[0],
-      "lname_U": fullName.length > 1 ? fullName[1] : '',
-      "phone_U": _phoneCtrl.text,
-      "email_U": _emailCtrl.text,
-      "role_U": selectedRole,
-      "username": _usernameCtrl.text,
-      "password": _passwordCtrl.text,
-      // เพิ่มข้อมูลเฉพาะตาม role
-      if (selectedRole == "nurse") ...{
-        "license_number": '',
-        "department": '',
-        "position": '',
-      },
-      if (selectedRole == "porter") ...{
-        "shift": '',
-        "area": '',
-        "position": '',
-      },
-    };
-
-    final result = await RegisFunctions.addRegistrant(data);
-    if (result == 'success') {
-      Navigator.pop(context);
-    } else {
-      _showMsg(result);
-    }
-  }
 
   void _showMsg(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
