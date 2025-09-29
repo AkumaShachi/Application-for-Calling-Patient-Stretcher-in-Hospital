@@ -1,4 +1,9 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+
+import 'admin_stretcher.dart';
+import 'admin_equipments.dart';
+import 'admin_list_nurse.dart';
+import 'admin_list_porter.dart';
 
 class AdminMenuPage extends StatelessWidget {
   const AdminMenuPage({super.key});
@@ -15,12 +20,12 @@ class AdminMenuPage extends StatelessWidget {
           _MenuOption(
             label: 'พยาบาล',
             description: 'ดูรายชื่อพยาบาลทั้งหมด',
-            builder: (context) => const ComingSoonPage(title: 'รายชื่อพยาบาล'),
+            builder: (context) => const AdminListNurseScreen(),
           ),
           _MenuOption(
             label: 'เจ้าหน้าที่',
             description: 'ดูรายชื่อเจ้าหน้าที่เวรเปล',
-            builder: (context) => const ComingSoonPage(title: 'รายชื่อเจ้าหน้าที่'),
+            builder: (context) => const AdminListPorterScreen(),
           ),
         ],
       ),
@@ -33,12 +38,14 @@ class AdminMenuPage extends StatelessWidget {
           _MenuOption(
             label: 'ที่มีอยู่ปัจจุบัน',
             description: 'รายการเคสที่กำลังดำเนินอยู่',
-            builder: (context) => const ComingSoonPage(title: 'เคสที่กำลังดำเนินอยู่'),
+            builder: (context) =>
+                const ComingSoonPage(title: 'เคสที่กำลังดำเนินอยู่'),
           ),
           _MenuOption(
             label: 'ที่เสร็จแล้ว',
             description: 'ประวัติเคสที่ปิดงานแล้ว',
-            builder: (context) => const ComingSoonPage(title: 'เคสที่เสร็จแล้ว'),
+            builder: (context) =>
+                const ComingSoonPage(title: 'เคสที่เสร็จแล้ว'),
           ),
         ],
       ),
@@ -51,22 +58,19 @@ class AdminMenuPage extends StatelessWidget {
           _MenuOption(
             label: 'อุปกรณ์',
             description: 'รายการเครื่องมือและอุปกรณ์ทั้งหมด',
-            builder: (context) => const ComingSoonPage(title: 'รายการอุปกรณ์'),
+            builder: (context) => const AdminEquipmentsScreen(),
           ),
           _MenuOption(
             label: 'เปลผู้ป่วย',
             description: 'รายการเปลที่พร้อมใช้งาน',
-            builder: (context) => const ComingSoonPage(title: 'รายการเปล'),
+            builder: (context) => const AdminStretcherScreen(),
           ),
         ],
       ),
     ];
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('เมนูผู้ดูแลระบบ'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('เมนูผู้ดูแลระบบ'), centerTitle: true),
       body: ListView.separated(
         padding: const EdgeInsets.all(16),
         itemCount: items.length,
@@ -112,21 +116,24 @@ class _AdminMenuCard extends StatelessWidget {
                     Text(
                       config.title,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       config.subtitle,
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodyMedium
-                          ?.copyWith(color: Colors.black54),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(color: Colors.black54),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.keyboard_arrow_right, size: 32, color: Colors.black54),
+              const Icon(
+                Icons.keyboard_arrow_right,
+                size: 32,
+                color: Colors.black54,
+              ),
             ],
           ),
         ),
@@ -175,9 +182,7 @@ class _AdminMenuCard extends StatelessWidget {
     }
 
     if (selected.builder != null) {
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: selected.builder!),
-      );
+      Navigator.of(context).push(MaterialPageRoute(builder: selected.builder!));
     }
   }
 }
@@ -199,11 +204,7 @@ class _AdminMenuItemConfig {
 }
 
 class _MenuOption {
-  const _MenuOption({
-    required this.label,
-    this.description,
-    this.builder,
-  });
+  const _MenuOption({required this.label, this.description, this.builder});
 
   final String label;
   final String? description;
@@ -233,10 +234,9 @@ class ComingSoonPage extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               'โปรดกลับมาใหม่อีกครั้งเร็วๆ นี้',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.copyWith(color: Colors.black54),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: Colors.black54),
               textAlign: TextAlign.center,
             ),
           ],

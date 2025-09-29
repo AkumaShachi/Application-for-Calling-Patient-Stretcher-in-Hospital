@@ -401,14 +401,15 @@ class AnimatedCaseCard extends StatelessWidget {
   });
 
   String timeAgo(String createdAt) {
-    final createdTime = DateTime.parse(createdAt).toLocal();
-    final now = DateTime.now();
-    final diff = now.difference(createdTime);
-    if (diff.inSeconds < 60) return '${diff.inSeconds}s';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m';
-    if (diff.inHours < 24) return '${diff.inHours}h';
-    if (diff.inDays < 7) return '${diff.inDays}d';
-    return '${createdTime.day}/${createdTime.month}/${createdTime.year}';
+    try {
+      final date = DateTime.parse(createdAt);
+      final diff = DateTime.now().difference(date);
+      if (diff.inMinutes < 60) return '${diff.inMinutes} นาทีที่แล้ว';
+      if (diff.inHours < 24) return '${diff.inHours} ชั่วโมงที่แล้ว';
+      return '${diff.inDays} วันก่อน';
+    } catch (e) {
+      return createdAt;
+    }
   }
 
   @override

@@ -8,6 +8,7 @@ const forgetRouter = require('./src/forget');
 const resetRouter = require('./src/reset');
 
 const addcaseRouter = require('./src/Cases/cases_add');
+const checkcaseRouter = require('./src/Cases/cases_check');
 const delcaseRouter = require('./src/Cases/cases_delete');
 const getcaseRouter = require('./src/Cases/cases_get');
 const updcaseRouter = require('./src/Cases/cases_update');
@@ -23,9 +24,11 @@ const getstrRouter = require('./src/Stretchers/stretchers_get');
 const updstrRouter = require('./src/Stretchers/stretchers_update');
 
 const getproRouter = require('./src/Profile/profile_get');
+const getusersRouter = require('./src/Employee/employee_get');
 const updproRouter = require('./src/Profile/profile_update');
 
 const getrhisRouter = require('./src/CaseHistory/caseshistory_get');
+const addrhisRouter = require('./src/CaseHistory/caseshistory_add');
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -40,6 +43,7 @@ app.use(forgetRouter);
 app.use(resetRouter);
 
 app.use(addcaseRouter);
+app.use(checkcaseRouter);
 app.use(delcaseRouter);
 app.use(getcaseRouter);
 app.use(updcaseRouter);
@@ -55,9 +59,11 @@ app.use(getstrRouter);
 app.use(updstrRouter);
 
 app.use(getproRouter);
+app.use(getusersRouter);
 app.use(updproRouter);
 
 app.use(getrhisRouter);
+app.use(addrhisRouter);
 
 // const PORT = process.env.PORT || 4000;
 // app.listen(PORT, () => {

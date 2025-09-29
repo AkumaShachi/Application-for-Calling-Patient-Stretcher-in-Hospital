@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../services/Cases/case_check_function.dart';
 import '../services/Equipments/equipment_get_function.dart';
 import '../services/Stretchers/stretcher_get_function.dart';
 
@@ -14,7 +15,25 @@ import '../design/theme.dart';
 import 'nurse_ex-post_case.dart';
 
 class NurseAddCaseScreen extends StatefulWidget {
-  const NurseAddCaseScreen({super.key});
+  final String? initialPatientId;
+  final String? initialPatientType;
+  final String? initialReceivePoint;
+  final String? initialSendPoint;
+  final int? initialStretcherTypeId;
+  final String? initialStretcherTypeName;
+  final List<int>? initialEquipmentIds;
+  final String? initialEquipmentNames;
+  const NurseAddCaseScreen({
+    super.key,
+    this.initialPatientId,
+    this.initialPatientType,
+    this.initialReceivePoint,
+    this.initialSendPoint,
+    this.initialStretcherTypeId,
+    this.initialStretcherTypeName,
+    this.initialEquipmentIds,
+    this.initialEquipmentNames,
+  });
   @override
   State<NurseAddCaseScreen> createState() => _NurseAddCaseScreenState();
 }
@@ -57,6 +76,27 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen>
     super.initState();
     _initMicAndRecorder();
     Future.delayed(const Duration(milliseconds: 300), _inCtrl.forward);
+
+    if (widget.initialPatientId != null) {
+      patientIdController.text = widget.initialPatientId!;
+    }
+    if (widget.initialPatientType != null) {
+      patientTypeController.text = widget.initialPatientType!;
+    }
+    if (widget.initialReceivePoint != null) {
+      receivePointController.text = widget.initialReceivePoint!;
+    }
+    if (widget.initialSendPoint != null) {
+      sendPointController.text = widget.initialSendPoint!;
+    }
+
+    selectedStretcherTypeId = widget.initialStretcherTypeId;
+    stretcherTypeName = widget.initialStretcherTypeName ?? '';
+    selectedEquipmentIds = widget.initialEquipmentIds ?? [];
+    equipmentNames = widget.initialEquipmentNames ?? '';
+    print("🔍 initialEquipmentIds: ${widget.initialEquipmentIds}");
+    print("🔍 selectedEquipmentIds: $selectedEquipmentIds");
+    print("🔍 equipmentNames: $equipmentNames");
   }
 
   Future<void> _initMicAndRecorder() async {
@@ -76,7 +116,7 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen>
     super.dispose();
   }
 
-  void _validateAndSubmit() {
+  void _validateAndSubmit() async {
     if (patientIdController.text.isEmpty ||
         patientTypeController.text.isEmpty ||
         receivePointController.text.isEmpty ||
@@ -85,13 +125,28 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen>
         const SnackBar(content: Text('กรุณากรอกข้อมูลให้ครบถ้วน')),
       );
       return;
-    } else if (selectedStretcherTypeId == null) {
+    }
+
+    // ✅ เช็คว่ามีเคสอยู่แล้วหรือไม่
+    final exists = await CaseCheckService.checkCaseExists(
+      patientIdController.text,
+    );
+
+    if (exists) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('⚠️ มีเคสของผู้ป่วยนี้อยู่แล้ว')),
+      );
+      return; // หรือจะเปลี่ยน flow → ไปที่หน้ารวมเคสแทนก็ได้
+    }
+
+    if (selectedStretcherTypeId == null) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('กรุณาเลือกประเภทเปล')));
       return;
     }
 
+    // ... ถ้าไม่มีเคส → ไปต่อปกติ
     final fname = UserPreferences.fname ?? '';
     final lname = UserPreferences.lname ?? '';
     final userName = '$fname $lname';
@@ -193,30 +248,54 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen>
                                   );
                                   return;
                                 }
+
                                 setState(() => isMicButtonDisabled = true);
                                 try {
                                   if (!micController.isInitialized) {
                                     await micController.init();
                                   }
-                                  // เคลียร์ผลก่อนเริ่ม
+
                                   micController.recognizedText = "";
-                                  try {
-                                    await micController.listen(
-                                      editingField: editingField,
-                                      controllers: {
-                                        'หมายเลขผู้ป่วย': patientIdController,
-                                        'ประเภทผู้ป่วย': patientTypeController,
-                                        'จุดรับ': receivePointController,
-                                        'จุดส่ง': sendPointController,
-                                      },
-                                      onUpdate: () => setState(() {}),
-                                    );
-                                  } catch (err) {
-                                    print("Mic listen error: $err");
-                                    await micController.stop();
-                                  }
-                                } catch (e) {
-                                  print("Mic error: $e");
+
+                                  await micController.listen(
+                                    editingField: editingField,
+                                    controllers: {
+                                      'หมายเลขผู้ป่วย': patientIdController,
+                                      'ประเภทผู้ป่วย': patientTypeController,
+                                      'จุดรับ': receivePointController,
+                                      'จุดส่ง': sendPointController,
+                                    },
+                                    onUpdate: () {
+                                      setState(() {
+                                        if (editingField != null &&
+                                            micController
+                                                .recognizedText
+                                                .isNotEmpty) {
+                                          switch (editingField) {
+                                            case 'หมายเลขผู้ป่วย':
+                                              patientIdController.text =
+                                                  micController.recognizedText;
+                                              break;
+                                            case 'ประเภทผู้ป่วย':
+                                              patientTypeController.text =
+                                                  micController.recognizedText;
+                                              break;
+                                            case 'จุดรับ':
+                                              receivePointController.text =
+                                                  micController.recognizedText;
+                                              break;
+                                            case 'จุดส่ง':
+                                              sendPointController.text =
+                                                  micController.recognizedText;
+                                              break;
+                                          }
+                                        }
+                                      });
+                                    },
+                                  );
+                                } catch (err) {
+                                  print("Mic error: $err");
+                                  await micController.stop();
                                 } finally {
                                   setState(() => isMicButtonDisabled = false);
                                 }
@@ -224,56 +303,10 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen>
                               onTapUp: (details) async {
                                 if (micController.isListening)
                                   await micController.stop();
-                                // เมื่อหยุด ให้เอาข้อความที่ได้ไปแทน controller ของฟิลด์ที่เลือก
-                                if (editingField != null &&
-                                    micController.recognizedText.isNotEmpty) {
-                                  switch (editingField) {
-                                    case 'หมายเลขผู้ป่วย':
-                                      patientIdController.text =
-                                          micController.recognizedText;
-                                      break;
-                                    case 'ประเภทผู้ป่วย':
-                                      patientTypeController.text =
-                                          micController.recognizedText;
-                                      break;
-                                    case 'จุดรับ':
-                                      receivePointController.text =
-                                          micController.recognizedText;
-                                      break;
-                                    case 'จุดส่ง':
-                                      sendPointController.text =
-                                          micController.recognizedText;
-                                      break;
-                                  }
-                                }
-                                setState(() {});
                               },
                               onTapCancel: () async {
                                 if (micController.isListening)
                                   await micController.stop();
-                                // same as onTapUp
-                                if (editingField != null &&
-                                    micController.recognizedText.isNotEmpty) {
-                                  switch (editingField) {
-                                    case 'หมายเลขผู้ป่วย':
-                                      patientIdController.text =
-                                          micController.recognizedText;
-                                      break;
-                                    case 'ประเภทผู้ป่วย':
-                                      patientTypeController.text =
-                                          micController.recognizedText;
-                                      break;
-                                    case 'จุดรับ':
-                                      receivePointController.text =
-                                          micController.recognizedText;
-                                      break;
-                                    case 'จุดส่ง':
-                                      sendPointController.text =
-                                          micController.recognizedText;
-                                      break;
-                                  }
-                                }
-                                setState(() {});
                               },
                               child: CircleAvatar(
                                 radius: min(
@@ -297,6 +330,7 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen>
                                 ),
                               ),
                             ),
+
                             const SizedBox(height: 8),
                             Text(
                               micController.isListening
@@ -383,29 +417,44 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen>
         onPressed: () async {
           final selected = await showModalBottomSheet<Map<String, dynamic>>(
             context: context,
+            isScrollControlled: true,
             builder: (context) {
-              return FutureBuilder<List<Map<String, dynamic>>>(
-                future: StretcherGetService.fetchStretchers(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (snapshot.hasError || snapshot.data == null) {
-                    return const Center(child: Text('ไม่สามารถโหลดข้อมูลได้'));
-                  }
-                  final types = snapshot.data!;
-                  return ListView.builder(
-                    itemCount: types.length,
-                    itemBuilder: (context, index) {
-                      final type = types[index];
-                      return ListTile(
-                        title: Text(type['type_name']),
-                        subtitle: Text('จำนวน: ${type['quantity']}'),
-                        onTap: () => Navigator.pop(context, type),
+              return FractionallySizedBox(
+                heightFactor: 0.66,
+                child: FutureBuilder<List<Map<String, dynamic>>>(
+                  future: StretcherGetService.fetchStretchers(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snapshot.hasError || snapshot.data == null) {
+                      return const Center(
+                        child: Text('ไม่สามารถโหลดข้อมูลได้'),
                       );
-                    },
-                  );
-                },
+                    }
+
+                    final types = snapshot.data!
+                        .where((t) => (t['str_quantity'] ?? 0) > 0) // 🔥 filter
+                        .toList();
+                    print("📦 Stretcher Data: $types");
+
+                    return ListView.builder(
+                      itemCount: types.length,
+                      itemBuilder: (context, index) {
+                        final type = types[index];
+                        return ListTile(
+                          title: Text(type['str_type_name'] ?? "-"),
+                          subtitle: Text('จำนวน: ${type['str_quantity'] ?? 0}'),
+                          onTap: () => Navigator.pop(context, {
+                            'id': type['str_type_id'],
+                            'type_name': type['str_type_name'],
+                            'quantity': type['str_quantity'],
+                          }),
+                        );
+                      },
+                    );
+                  },
+                ),
               );
             },
           );
@@ -415,6 +464,7 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen>
               selectedStretcherTypeId = selected['id'];
               stretcherTypeName = selected['type_name'];
             });
+            print("✅ Selected Stretcher: $selected");
           }
         },
         child: Row(
@@ -442,75 +492,99 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen>
           final selected =
               await showModalBottomSheet<List<Map<String, dynamic>>>(
                 context: context,
+                isScrollControlled: true,
                 builder: (context) {
-                  return FutureBuilder<List<Map<String, dynamic>>>(
-                    future: EquipmentGetService.fetchEquipments(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-                      if (snapshot.hasError || snapshot.data == null) {
-                        return const Center(
-                          child: Text('ไม่สามารถโหลดข้อมูลได้'),
+                  return FractionallySizedBox(
+                    heightFactor: 0.66,
+                    child: FutureBuilder<List<Map<String, dynamic>>>(
+                      future: EquipmentGetService.fetchEquipments(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+                        if (snapshot.hasError || snapshot.data == null) {
+                          return const Center(
+                            child: Text('ไม่สามารถโหลดข้อมูลได้'),
+                          );
+                        }
+
+                        final equipment = snapshot.data!
+                            .where(
+                              (e) => (e['eqpt_quantity'] ?? 0) > 0,
+                            ) // 🔥 filter
+                            .toList();
+                        // print("📦 Equipment Data: $equipment");
+
+                        List<int> tempSelected = List.from(
+                          selectedEquipmentIds,
                         );
-                      }
 
-                      final equipment = snapshot.data!;
-                      List<int> tempSelected = List.from(selectedEquipmentIds);
-
-                      return StatefulBuilder(
-                        builder: (context, setModalState) {
-                          return SizedBox(
-                            height: 400,
-                            child: Column(
-                              children: [
-                                Expanded(
-                                  child: ListView.builder(
-                                    itemCount: equipment.length,
-                                    itemBuilder: (context, index) {
-                                      final eq = equipment[index];
-                                      final isSelected = tempSelected.contains(
-                                        eq['id'],
-                                      );
-                                      return CheckboxListTile(
-                                        title: Text(eq['equipment_name']),
-                                        subtitle: Text(
-                                          'จำนวน: ${eq['quantity']}',
-                                        ),
-                                        value: isSelected,
-                                        onChanged: (value) {
-                                          setModalState(() {
-                                            if (value == true) {
-                                              tempSelected.add(eq['id']);
-                                            } else {
-                                              tempSelected.remove(eq['id']);
-                                            }
-                                          });
-                                        },
+                        return StatefulBuilder(
+                          builder: (context, setModalState) {
+                            return SizedBox(
+                              height: 400,
+                              child: Column(
+                                children: [
+                                  Expanded(
+                                    child: ListView.builder(
+                                      itemCount: equipment.length,
+                                      itemBuilder: (context, index) {
+                                        final eq = equipment[index];
+                                        final eqId = eq['eqpt_id'] as int;
+                                        final isSelected = tempSelected
+                                            .contains(eqId);
+                                        return CheckboxListTile(
+                                          title: Text(eq['eqpt_name'] ?? "-"),
+                                          subtitle: Text(
+                                            'จำนวน: ${eq['eqpt_quantity'] ?? 0}',
+                                          ),
+                                          value: isSelected,
+                                          onChanged: (value) {
+                                            setModalState(() {
+                                              if (value == true) {
+                                                tempSelected.add(eqId);
+                                              } else {
+                                                tempSelected.remove(eqId);
+                                              }
+                                            });
+                                          },
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.pop(
+                                        context,
+                                        equipment
+                                            .where(
+                                              (e) => tempSelected.contains(
+                                                e['eqpt_id'],
+                                              ),
+                                            )
+                                            .map(
+                                              (e) => {
+                                                'id': e['eqpt_id'],
+                                                'equipment_name':
+                                                    e['eqpt_name'],
+                                                'quantity': e['eqpt_quantity'],
+                                              },
+                                            )
+                                            .toList(),
                                       );
                                     },
+                                    child: const Text('ตกลง'),
                                   ),
-                                ),
-                                ElevatedButton(
-                                  onPressed: () {
-                                    Navigator.pop(
-                                      context,
-                                      equipment
-                                          .where(
-                                            (e) =>
-                                                tempSelected.contains(e['id']),
-                                          )
-                                          .toList(),
-                                    );
-                                  },
-                                  child: const Text('ตกลง'),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      );
-                    },
+                                ],
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
                   );
                 },
               );
@@ -524,6 +598,8 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen>
                   .map((e) => e['equipment_name'])
                   .join(', ');
             });
+            print("selectedStretcherTypeId: $selectedStretcherTypeId");
+            print("✅ Selected Equipments: $selected");
           }
         },
         child: Row(
