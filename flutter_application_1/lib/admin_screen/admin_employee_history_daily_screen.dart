@@ -1,6 +1,5 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../design/theme.dart';
 import 'admin_list_historycase.dart' show AdminHistoryCaseDetailScreen;
 
 class DailyHistoryStat {
@@ -94,8 +93,7 @@ class _AdminEmployeeHistoryDailyScreenState
         : widget.employeeName;
 
     final totalCases = widget.stats.fold<int>(0, (s, e) => s + e.total);
-    final totalCompleted = widget.stats.fold<int>(0, (s, e) => s + e.completed);
-    final totalActive = totalCases - totalCompleted;
+    widget.stats.fold<int>(0, (s, e) => s + e.completed);
 
     final sel = _buildCountsFromEntries(_filtered);
 
@@ -426,8 +424,6 @@ class _Counts {
 
 extension _DateCmp on DateTime {
   bool isAfterOrAt(DateTime other) => isAfter(other) || isAtSameMomentAs(other);
-  bool isBeforeOrAt(DateTime other) =>
-      isBefore(other) || isAtSameMomentAs(other);
 }
 
 class _CountBadge extends StatelessWidget {

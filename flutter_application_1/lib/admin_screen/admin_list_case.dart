@@ -138,7 +138,7 @@ class _AdminListCaseScreenState extends State<AdminListCaseScreen> {
                           },
                         );
                       },
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      separatorBuilder: (_, _) => const SizedBox(height: 12),
                     ),
                   );
                 },
@@ -281,7 +281,7 @@ class _CaseCard extends StatelessWidget {
     final hh = dt.hour.toString().padLeft(2, '0');
     final mm = dt.minute.toString().padLeft(2, '0');
 
-    final datePart = '$d/$m/$y' + (showEraSuffix ? ' พ.ศ.' : '');
+    final datePart = '$d/$m/$y${showEraSuffix ? ' พ.ศ.' : ''}';
     return showTime ? '$datePart $hh:$mm' : datePart;
   }
 

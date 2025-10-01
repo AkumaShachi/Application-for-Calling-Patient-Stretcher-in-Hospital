@@ -1,4 +1,4 @@
-// ignore_for_file: avoid_print, curly_braces_in_flow_control_structures, deprecated_member_use
+// ignore_for_file: avoid_print, curly_braces_in_flow_control_structures, deprecated_member_use, use_build_context_synchronously
 
 import 'dart:ui';
 import 'dart:math';

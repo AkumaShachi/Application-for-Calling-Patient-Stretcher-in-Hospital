@@ -1,4 +1,4 @@
-// ignore_for_file: sized_box_for_whitespace, avoid_print, deprecated_member_use
+// ignore_for_file: sized_box_for_whitespace, avoid_print, deprecated_member_use, use_build_context_synchronously
 
 import 'dart:io';
 import 'dart:async';
@@ -620,7 +620,6 @@ class CaseListView extends StatelessWidget {
                       ),
                     );
                   } catch (e) {
-                    // ignore: use_build_context_synchronously
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text("โหลดข้อมูลล้มเหลว: $e")),
                     );

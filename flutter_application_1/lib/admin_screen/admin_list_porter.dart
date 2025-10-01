@@ -110,6 +110,7 @@ class _AdminListPorterScreenState extends State<AdminListPorterScreen> {
       ),
     );
   }
+
   String _describeError(Object error) {
     final message = error.toString();
     if (message.startsWith('Exception: ')) {
@@ -119,8 +120,12 @@ class _AdminListPorterScreenState extends State<AdminListPorterScreen> {
   }
 
   String _initials(dynamic fname, dynamic lname) {
-    final first = fname?.toString().isNotEmpty == true ? fname.toString()[0] : '';
-    final last = lname?.toString().isNotEmpty == true ? lname.toString()[0] : '';
+    final first = fname?.toString().isNotEmpty == true
+        ? fname.toString()[0]
+        : '';
+    final last = lname?.toString().isNotEmpty == true
+        ? lname.toString()[0]
+        : '';
     final result = '$first$last';
     return result.isNotEmpty ? result.toUpperCase() : '?';
   }
@@ -139,10 +144,7 @@ class _AdminListPorterScreenState extends State<AdminListPorterScreen> {
             children: [
               const Icon(Icons.error_outline, color: Colors.red, size: 42),
               const SizedBox(height: 12),
-              Text(
-                _errorMessage!,
-                textAlign: TextAlign.center,
-              ),
+              Text(_errorMessage!, textAlign: TextAlign.center),
               const SizedBox(height: 16),
               ElevatedButton.icon(
                 onPressed: () => _fetchData(initial: true),
@@ -164,7 +166,8 @@ class _AdminListPorterScreenState extends State<AdminListPorterScreen> {
             controller: _searchCtrl,
             decoration: InputDecoration(
               prefixIcon: const Icon(Icons.search),
-              hintText: 'ค้นหาเจ้าหน้าที่เวรเปลตามชื่อ, รหัส, อีเมล หรือเบอร์โทร',
+              hintText:
+                  'ค้นหาเจ้าหน้าที่เวรเปลตามชื่อ, รหัส, อีเมล หรือเบอร์โทร',
               filled: true,
               fillColor: Colors.white,
               border: OutlineInputBorder(
@@ -188,7 +191,9 @@ class _AdminListPorterScreenState extends State<AdminListPorterScreen> {
                       SizedBox(height: 120),
                       Icon(Icons.person_off, size: 64, color: Colors.grey),
                       SizedBox(height: 12),
-                      Center(child: Text('ไม่พบเจ้าหน้าที่เวรเปลที่ตรงกับการค้นหา')),
+                      Center(
+                        child: Text('ไม่พบเจ้าหน้าที่เวรเปลที่ตรงกับการค้นหา'),
+                      ),
                     ],
                   )
                 : ListView.separated(
@@ -196,7 +201,9 @@ class _AdminListPorterScreenState extends State<AdminListPorterScreen> {
                     itemBuilder: (context, index) {
                       final porter = _filtered[index];
                       final imageUrl = porter['user_profile_image']?.toString();
-                      final name = '${porter['user_fname'] ?? ''} ${porter['user_lname'] ?? ''}'.trim();
+                      final name =
+                          '${porter['user_fname'] ?? ''} ${porter['user_lname'] ?? ''}'
+                              .trim();
                       return Container(
                         decoration: BoxDecoration(
                           color: Colors.white,
@@ -211,16 +218,23 @@ class _AdminListPorterScreenState extends State<AdminListPorterScreen> {
                         ),
                         child: ListTile(
                           onTap: () => _openHistory(porter),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 12,
+                          ),
                           leading: CircleAvatar(
                             radius: 26,
                             backgroundColor: AppTheme.lavender,
-                            backgroundImage: imageUrl != null && imageUrl.isNotEmpty
+                            backgroundImage:
+                                imageUrl != null && imageUrl.isNotEmpty
                                 ? NetworkImage(imageUrl)
                                 : null,
                             child: (imageUrl == null || imageUrl.isEmpty)
                                 ? Text(
-                                    _initials(porter['user_fname'], porter['user_lname']),
+                                    _initials(
+                                      porter['user_fname'],
+                                      porter['user_lname'],
+                                    ),
                                     style: const TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.bold,
@@ -230,7 +244,10 @@ class _AdminListPorterScreenState extends State<AdminListPorterScreen> {
                           ),
                           title: Text(
                             name.isEmpty ? 'ไม่ทราบชื่อ' : name,
-                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
                           ),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -241,11 +258,14 @@ class _AdminListPorterScreenState extends State<AdminListPorterScreen> {
                               Text('อีเมล: ${porter['user_email'] ?? '-'}'),
                             ],
                           ),
-                          trailing: const Icon(Icons.history, color: Colors.deepPurple),
+                          trailing: const Icon(
+                            Icons.history,
+                            color: Colors.deepPurple,
+                          ),
                         ),
                       );
                     },
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
                     itemCount: _filtered.length,
                   ),
           ),
@@ -261,25 +281,17 @@ class _AdminListPorterScreenState extends State<AdminListPorterScreen> {
         title: const Text('รายชื่อเจ้าหน้าที่เวรเปล'),
         actions: [
           IconButton(
-            onPressed: _refreshing || _initialLoading ? null : () => _fetchData(),
+            onPressed: _refreshing || _initialLoading
+                ? null
+                : () => _fetchData(),
             icon: const Icon(Icons.refresh),
             tooltip: 'รีเฟรช',
           ),
         ],
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: _buildBody(),
-        ),
+        child: Padding(padding: const EdgeInsets.all(16), child: _buildBody()),
       ),
     );
   }
 }
-
-
-
-
-
-
-

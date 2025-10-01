@@ -1,4 +1,6 @@
-﻿import 'package:flutter/material.dart';
+﻿// ignore_for_file: use_build_context_synchronously
+
+import 'package:flutter/material.dart';
 
 import '../design/theme.dart';
 import '../services/Stretchers/stretcher_add_function.dart';
@@ -348,7 +350,7 @@ class _AdminStretcherScreenState extends State<AdminStretcherScreen> {
                         onDelete: () => _confirmDelete(stretcher),
                       );
                     },
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
                     itemCount: _stretchers.length,
                   ),
           ),

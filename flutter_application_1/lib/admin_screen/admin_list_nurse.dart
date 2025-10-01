@@ -110,6 +110,7 @@ class _AdminListNurseScreenState extends State<AdminListNurseScreen> {
       ),
     );
   }
+
   String _describeError(Object error) {
     final message = error.toString();
     if (message.startsWith('Exception: ')) {
@@ -119,8 +120,12 @@ class _AdminListNurseScreenState extends State<AdminListNurseScreen> {
   }
 
   String _initials(dynamic fname, dynamic lname) {
-    final first = fname?.toString().isNotEmpty == true ? fname.toString()[0] : '';
-    final last = lname?.toString().isNotEmpty == true ? lname.toString()[0] : '';
+    final first = fname?.toString().isNotEmpty == true
+        ? fname.toString()[0]
+        : '';
+    final last = lname?.toString().isNotEmpty == true
+        ? lname.toString()[0]
+        : '';
     final result = '$first$last';
     return result.isNotEmpty ? result.toUpperCase() : '?';
   }
@@ -139,10 +144,7 @@ class _AdminListNurseScreenState extends State<AdminListNurseScreen> {
             children: [
               const Icon(Icons.error_outline, color: Colors.red, size: 42),
               const SizedBox(height: 12),
-              Text(
-                _errorMessage!,
-                textAlign: TextAlign.center,
-              ),
+              Text(_errorMessage!, textAlign: TextAlign.center),
               const SizedBox(height: 16),
               ElevatedButton.icon(
                 onPressed: () => _fetchData(initial: true),
@@ -196,7 +198,9 @@ class _AdminListNurseScreenState extends State<AdminListNurseScreen> {
                     itemBuilder: (context, index) {
                       final nurse = _filtered[index];
                       final imageUrl = nurse['user_profile_image']?.toString();
-                      final name = '${nurse['user_fname'] ?? ''} ${nurse['user_lname'] ?? ''}'.trim();
+                      final name =
+                          '${nurse['user_fname'] ?? ''} ${nurse['user_lname'] ?? ''}'
+                              .trim();
                       return Container(
                         decoration: BoxDecoration(
                           color: Colors.white,
@@ -211,16 +215,23 @@ class _AdminListNurseScreenState extends State<AdminListNurseScreen> {
                         ),
                         child: ListTile(
                           onTap: () => _openHistory(nurse),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 12,
+                          ),
                           leading: CircleAvatar(
                             radius: 26,
                             backgroundColor: AppTheme.lavender,
-                            backgroundImage: imageUrl != null && imageUrl.isNotEmpty
+                            backgroundImage:
+                                imageUrl != null && imageUrl.isNotEmpty
                                 ? NetworkImage(imageUrl)
                                 : null,
                             child: (imageUrl == null || imageUrl.isEmpty)
                                 ? Text(
-                                    _initials(nurse['user_fname'], nurse['user_lname']),
+                                    _initials(
+                                      nurse['user_fname'],
+                                      nurse['user_lname'],
+                                    ),
                                     style: const TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.bold,
@@ -230,7 +241,10 @@ class _AdminListNurseScreenState extends State<AdminListNurseScreen> {
                           ),
                           title: Text(
                             name.isEmpty ? 'ไม่ทราบชื่อ' : name,
-                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
                           ),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -241,11 +255,14 @@ class _AdminListNurseScreenState extends State<AdminListNurseScreen> {
                               Text('อีเมล: ${nurse['user_email'] ?? '-'}'),
                             ],
                           ),
-                          trailing: const Icon(Icons.history, color: Colors.deepPurple),
+                          trailing: const Icon(
+                            Icons.history,
+                            color: Colors.deepPurple,
+                          ),
                         ),
                       );
                     },
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
                     itemCount: _filtered.length,
                   ),
           ),
@@ -261,25 +278,17 @@ class _AdminListNurseScreenState extends State<AdminListNurseScreen> {
         title: const Text('รายชื่อพยาบาล'),
         actions: [
           IconButton(
-            onPressed: _refreshing || _initialLoading ? null : () => _fetchData(),
+            onPressed: _refreshing || _initialLoading
+                ? null
+                : () => _fetchData(),
             icon: const Icon(Icons.refresh),
             tooltip: 'รีเฟรช',
           ),
         ],
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: _buildBody(),
-        ),
+        child: Padding(padding: const EdgeInsets.all(16), child: _buildBody()),
       ),
     );
   }
 }
-
-
-
-
-
-
-

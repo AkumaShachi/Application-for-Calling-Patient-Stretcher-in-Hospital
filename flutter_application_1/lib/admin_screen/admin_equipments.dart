@@ -1,4 +1,6 @@
-﻿import 'package:flutter/material.dart';
+﻿// ignore_for_file: use_build_context_synchronously
+
+import 'package:flutter/material.dart';
 
 import '../design/theme.dart';
 import '../services/Equipments/equipment_add_function.dart';
@@ -349,7 +351,7 @@ class _AdminEquipmentsScreenState extends State<AdminEquipmentsScreen> {
                         onDelete: () => _confirmDelete(equipment),
                       );
                     },
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
                     itemCount: _equipments.length,
                   ),
           ),

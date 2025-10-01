@@ -138,7 +138,7 @@ class _AdminListHistoryCaseScreenState
                           },
                         );
                       },
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      separatorBuilder: (_, _) => const SizedBox(height: 12),
                     ),
                   );
                 },
@@ -286,7 +286,7 @@ class _HistoryCard extends StatelessWidget {
       final y = (dt.year + (buddhistEra ? 543 : 0)).toString();
       final hh = dt.hour.toString().padLeft(2, '0');
       final mm = dt.minute.toString().padLeft(2, '0');
-      final datePart = '$d/$m/$y' + (showEraSuffix ? ' พ.ศ.' : '');
+      final datePart = '$d/$m/$y${showEraSuffix ? ' พ.ศ.' : ''}';
       return showTime ? '$datePart $hh:$mm' : datePart;
     } catch (_) {
       return '-';

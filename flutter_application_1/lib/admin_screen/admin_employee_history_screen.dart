@@ -314,28 +314,6 @@ class _AdminEmployeeHistoryScreenState
         .toList();
   }
 
-  List<String> _valuesForSearch(Map<String, dynamic> entry) {
-    final values = <String>[];
-
-    void add(dynamic value) {
-      final text = value?.toString().trim().toLowerCase();
-      if (text != null && text.isNotEmpty && text != 'null') {
-        values.add(text);
-      }
-    }
-
-    add(entry['patient_id']);
-    add(entry['patient_type']);
-    add(entry['room_from']);
-    add(entry['room_to']);
-    add(entry['status']);
-    add(entry['notes']);
-    add(entry['case_id']);
-    add(entry['history_id']);
-
-    return values;
-  }
-
   DateTime? _parseDate(dynamic raw) {
     if (raw == null) return null;
     final text = raw.toString().trim();
