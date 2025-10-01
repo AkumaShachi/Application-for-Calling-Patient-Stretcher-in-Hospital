@@ -2,6 +2,7 @@
 
 import '../design/theme.dart';
 import '../services/Employee/employee_get_function.dart';
+import 'admin_employee_history_screen.dart';
 
 class AdminListNurseScreen extends StatefulWidget {
   const AdminListNurseScreen({super.key});
@@ -99,49 +100,16 @@ class _AdminListNurseScreenState extends State<AdminListNurseScreen> {
     }
   }
 
-  void _showDetails(Map<String, dynamic> nurse) {
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        final imageUrl = nurse['user_profile_image']?.toString();
-        return AlertDialog(
-          title: const Text('ข้อมูลพยาบาล'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircleAvatar(
-                  radius: 36,
-                  backgroundColor: AppTheme.lavender,
-                  backgroundImage:
-                      imageUrl != null && imageUrl.isNotEmpty ? NetworkImage(imageUrl) : null,
-                  child: (imageUrl == null || imageUrl.isEmpty)
-                      ? Text(
-                          _initials(nurse['user_fname'], nurse['user_lname']),
-                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                        )
-                      : null,
-                ),
-                const SizedBox(height: 16),
-                _DetailRow(label: 'รหัสพนักงาน', value: nurse['user_id']),
-                _DetailRow(label: 'ชื่อ', value: nurse['user_fname']),
-                _DetailRow(label: 'นามสกุล', value: nurse['user_lname']),
-                _DetailRow(label: 'เบอร์โทร', value: nurse['user_phone']),
-                _DetailRow(label: 'อีเมล', value: nurse['user_email']),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('ปิด'),
-            ),
-          ],
-        );
-      },
+  void _openHistory(Map<String, dynamic> nurse) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => AdminEmployeeHistoryScreen(
+          employee: Map<String, dynamic>.from(nurse),
+          role: EmployeeHistoryRole.nurse,
+        ),
+      ),
     );
   }
-
   String _describeError(Object error) {
     final message = error.toString();
     if (message.startsWith('Exception: ')) {
@@ -242,7 +210,7 @@ class _AdminListNurseScreenState extends State<AdminListNurseScreen> {
                           ],
                         ),
                         child: ListTile(
-                          onTap: () => _showDetails(nurse),
+                          onTap: () => _openHistory(nurse),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                           leading: CircleAvatar(
                             radius: 26,
@@ -273,7 +241,7 @@ class _AdminListNurseScreenState extends State<AdminListNurseScreen> {
                               Text('อีเมล: ${nurse['user_email'] ?? '-'}'),
                             ],
                           ),
-                          trailing: const Icon(Icons.info_outline, color: Colors.deepPurple),
+                          trailing: const Icon(Icons.history, color: Colors.deepPurple),
                         ),
                       );
                     },
@@ -309,32 +277,9 @@ class _AdminListNurseScreenState extends State<AdminListNurseScreen> {
   }
 }
 
-class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.label, this.value});
 
-  final String label;
-  final dynamic value;
 
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 110,
-            child: Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(value?.toString().isNotEmpty == true ? value.toString() : '-'),
-          ),
-        ],
-      ),
-    );
-  }
-}
+
+
+
+

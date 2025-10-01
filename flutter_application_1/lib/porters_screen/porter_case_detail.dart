@@ -1,6 +1,7 @@
 // ignore_for_file: library_private_types_in_public_api, avoid_print
 
 import 'package:flutter/material.dart';
+import '../services/Profile/profile_get_function.dart';
 import '../design/theme.dart';
 
 class PorterCaseDetailScreen extends StatefulWidget {
@@ -88,6 +89,7 @@ class _PorterCaseDetailScreenState extends State<PorterCaseDetailScreen>
                       _buildInfo(
                         'ผู้เรียกเคส',
                         '${item['requested_by_fname']} ${item['requested_by_lname']}',
+                        onTap: () => _showRequesterInfo(item),
                       ),
                       _buildInfo(
                         'เวลาสร้างเคส',
@@ -116,8 +118,162 @@ class _PorterCaseDetailScreenState extends State<PorterCaseDetailScreen>
     );
   }
 
-  Widget _buildInfo(String label, dynamic value) {
-    return Padding(
+  void _showRequesterInfo(Map<String, dynamic> item) {
+    final username = _extractUsername(item['requested_by_username']);
+    final profileFuture = username != null
+        ? ProfileGetService.fetchProfile(username)
+        : Future<Map<String, dynamic>?>.value(null);
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return FutureBuilder<Map<String, dynamic>?>(
+          future: profileFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const AlertDialog(
+                content: SizedBox(
+                  height: 96,
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              );
+            }
+
+            final theme = Theme.of(context);
+            final profile = snapshot.data;
+            final firstName = _stringValue(
+              profile?['fname'] ?? item['requested_by_fname'],
+            );
+            final lastName = _stringValue(
+              profile?['lname'] ?? item['requested_by_lname'],
+            );
+            final email = _stringValue(profile?['email']);
+            final phone = _stringValue(profile?['phone']);
+            final profileImage = profile?['profile_image']?.toString() ?? '';
+            final displayName = _composeDisplayName(firstName, lastName);
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: Row(
+                children: [
+                  const Icon(Icons.person, color: Colors.deepPurple),
+                  const SizedBox(width: 8),
+                  const Text('ข้อมูลผู้เรียกเคส'),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Avatar + ชื่อ
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 30,
+                        backgroundImage: profileImage.isNotEmpty
+                            ? NetworkImage(profileImage)
+                            : null,
+                        backgroundColor: Colors.deepPurple.shade100,
+                        child: profileImage.isEmpty
+                            ? const Icon(
+                                Icons.person,
+                                size: 32,
+                                color: Colors.white,
+                              )
+                            : null,
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              displayName,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  // รายละเอียด
+                  Card(
+                    color: theme.colorScheme.surfaceVariant,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        _buildProfileTile(Icons.email, 'อีเมล', email),
+                        const Divider(height: 0),
+                        _buildProfileTile(Icons.phone, 'เบอร์โทร', phone),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton.icon(
+                  icon: const Icon(Icons.close, size: 18),
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  label: const Text('ปิด'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildProfileTile(IconData icon, String label, String value) {
+    return ListTile(
+      leading: Icon(icon, color: AppTheme.deepPurple),
+      title: Text(label),
+      subtitle: Text(value.isEmpty ? '-' : value),
+    );
+  }
+
+  String _composeDisplayName(String firstName, String lastName) {
+    final parts = <String>[];
+    if (firstName != '-' && firstName.isNotEmpty) {
+      parts.add(firstName);
+    }
+    if (lastName != '-' && lastName.isNotEmpty) {
+      parts.add(lastName);
+    }
+    if (parts.isEmpty) {
+      return '-';
+    }
+    return parts.join(' ');
+  }
+
+  String? _extractUsername(dynamic value) {
+    if (value == null) {
+      return null;
+    }
+    final text = value.toString().trim();
+    if (text.isEmpty || text.toLowerCase() == 'null') {
+      return null;
+    }
+    return text;
+  }
+
+  String _stringValue(dynamic value) {
+    if (value == null) {
+      return '-';
+    }
+    final textValue = value.toString().trim();
+    return textValue.isEmpty ? '-' : textValue;
+  }
+
+  Widget _buildInfo(String label, dynamic value, {VoidCallback? onTap}) {
+    final content = Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -137,6 +293,16 @@ class _PorterCaseDetailScreenState extends State<PorterCaseDetailScreen>
           ),
         ],
       ),
+    );
+
+    if (onTap == null) {
+      return content;
+    }
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: content,
     );
   }
 }

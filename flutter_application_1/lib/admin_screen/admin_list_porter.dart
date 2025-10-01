@@ -2,6 +2,7 @@
 
 import '../design/theme.dart';
 import '../services/Employee/employee_get_function.dart';
+import 'admin_employee_history_screen.dart';
 
 class AdminListPorterScreen extends StatefulWidget {
   const AdminListPorterScreen({super.key});
@@ -99,49 +100,16 @@ class _AdminListPorterScreenState extends State<AdminListPorterScreen> {
     }
   }
 
-  void _showDetails(Map<String, dynamic> porter) {
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        final imageUrl = porter['user_profile_image']?.toString();
-        return AlertDialog(
-          title: const Text('ข้อมูลเจ้าหน้าที่เวรเปล'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircleAvatar(
-                  radius: 36,
-                  backgroundColor: AppTheme.lavender,
-                  backgroundImage:
-                      imageUrl != null && imageUrl.isNotEmpty ? NetworkImage(imageUrl) : null,
-                  child: (imageUrl == null || imageUrl.isEmpty)
-                      ? Text(
-                          _initials(porter['user_fname'], porter['user_lname']),
-                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                        )
-                      : null,
-                ),
-                const SizedBox(height: 16),
-                _DetailRow(label: 'รหัสพนักงาน', value: porter['user_id']),
-                _DetailRow(label: 'ชื่อ', value: porter['user_fname']),
-                _DetailRow(label: 'นามสกุล', value: porter['user_lname']),
-                _DetailRow(label: 'เบอร์โทร', value: porter['user_phone']),
-                _DetailRow(label: 'อีเมล', value: porter['user_email']),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('ปิด'),
-            ),
-          ],
-        );
-      },
+  void _openHistory(Map<String, dynamic> porter) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => AdminEmployeeHistoryScreen(
+          employee: Map<String, dynamic>.from(porter),
+          role: EmployeeHistoryRole.porter,
+        ),
+      ),
     );
   }
-
   String _describeError(Object error) {
     final message = error.toString();
     if (message.startsWith('Exception: ')) {
@@ -242,7 +210,7 @@ class _AdminListPorterScreenState extends State<AdminListPorterScreen> {
                           ],
                         ),
                         child: ListTile(
-                          onTap: () => _showDetails(porter),
+                          onTap: () => _openHistory(porter),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                           leading: CircleAvatar(
                             radius: 26,
@@ -273,7 +241,7 @@ class _AdminListPorterScreenState extends State<AdminListPorterScreen> {
                               Text('อีเมล: ${porter['user_email'] ?? '-'}'),
                             ],
                           ),
-                          trailing: const Icon(Icons.info_outline, color: Colors.deepPurple),
+                          trailing: const Icon(Icons.history, color: Colors.deepPurple),
                         ),
                       );
                     },
@@ -309,32 +277,9 @@ class _AdminListPorterScreenState extends State<AdminListPorterScreen> {
   }
 }
 
-class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.label, this.value});
 
-  final String label;
-  final dynamic value;
 
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(value?.toString().isNotEmpty == true ? value.toString() : '-'),
-          ),
-        ],
-      ),
-    );
-  }
-}
+
+
+
+

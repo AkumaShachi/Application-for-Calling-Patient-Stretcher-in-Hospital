@@ -1,23 +1,24 @@
 import 'package:flutter/material.dart';
+import '../services/CasesHistory/caseshistory_get_function.dart';
 
-import '../services/Cases/case_get_function.dart';
-
-class AdminListCaseScreen extends StatefulWidget {
-  const AdminListCaseScreen({super.key});
+class AdminListHistoryCaseScreen extends StatefulWidget {
+  const AdminListHistoryCaseScreen({super.key});
 
   @override
-  State<AdminListCaseScreen> createState() => _AdminListCaseScreenState();
+  State<AdminListHistoryCaseScreen> createState() =>
+      _AdminListHistoryCaseScreenState();
 }
 
-class _AdminListCaseScreenState extends State<AdminListCaseScreen> {
-  late Future<List<Map<String, dynamic>>> _casesFuture;
+class _AdminListHistoryCaseScreenState
+    extends State<AdminListHistoryCaseScreen> {
+  late Future<List<Map<String, dynamic>>> _historyFuture;
   final TextEditingController _searchCtrl = TextEditingController();
   String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
-    _casesFuture = _fetchCases();
+    _historyFuture = _fetchHistory();
     _searchCtrl.addListener(_handleSearch);
   }
 
@@ -34,22 +35,20 @@ class _AdminListCaseScreenState extends State<AdminListCaseScreen> {
     });
   }
 
-  Future<List<Map<String, dynamic>>> _fetchCases() async {
-    final cases = await CaseGetService.fetchAllCasesForPorter();
-    return cases.map((item) => Map<String, dynamic>.from(item)).toList();
+  Future<List<Map<String, dynamic>>> _fetchHistory() async {
+    final history = await CasesHistoryService.fetchHistory();
+    return history.map((item) => Map<String, dynamic>.from(item)).toList();
   }
 
   Future<void> _refresh() async {
     setState(() {
-      _casesFuture = _fetchCases();
+      _historyFuture = _fetchHistory();
     });
-    await _casesFuture;
+    await _historyFuture;
   }
 
   bool _matchesPatient(Map<String, dynamic> item) {
-    if (_searchQuery.isEmpty) {
-      return true;
-    }
+    if (_searchQuery.isEmpty) return true;
     final patientId = item['patient_id']?.toString().toLowerCase() ?? '';
     return patientId.contains(_searchQuery.toLowerCase());
   }
@@ -58,7 +57,7 @@ class _AdminListCaseScreenState extends State<AdminListCaseScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('All Cases')),
+      appBar: AppBar(title: const Text('Case History')),
       body: Container(
         color: theme.colorScheme.surface,
         child: Column(
@@ -67,7 +66,7 @@ class _AdminListCaseScreenState extends State<AdminListCaseScreen> {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: TextField(
                 controller: _searchCtrl,
-                keyboardType: TextInputType.number,
+                keyboardType: TextInputType.text, // อนุญาตตัวอักษรเช่น G12
                 decoration: InputDecoration(
                   prefixIcon: const Icon(Icons.search),
                   suffixIcon: _searchQuery.isEmpty
@@ -85,15 +84,15 @@ class _AdminListCaseScreenState extends State<AdminListCaseScreen> {
             ),
             Expanded(
               child: FutureBuilder<List<Map<String, dynamic>>>(
-                future: _casesFuture,
+                future: _historyFuture,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
                   }
 
                   if (snapshot.hasError) {
-                    return _ErrorView(
-                      message: 'Failed to load cases\n${snapshot.error}',
+                    return _HistoryErrorView(
+                      message: 'Failed to load history\n${snapshot.error}',
                       onRetry: _refresh,
                     );
                   }
@@ -101,8 +100,8 @@ class _AdminListCaseScreenState extends State<AdminListCaseScreen> {
                   final data = snapshot.data ?? [];
                   final filtered = data.where(_matchesPatient).toList();
                   final emptyMessage = _searchQuery.isEmpty
-                      ? 'No cases found'
-                      : 'No cases match that patient ID';
+                      ? 'No history records found'
+                      : 'No history records match that patient ID';
 
                   if (filtered.isEmpty) {
                     return RefreshIndicator(
@@ -113,7 +112,7 @@ class _AdminListCaseScreenState extends State<AdminListCaseScreen> {
                           horizontal: 16,
                           vertical: 24,
                         ),
-                        children: [_EmptyView(message: emptyMessage)],
+                        children: [_HistoryEmptyView(message: emptyMessage)],
                       ),
                     );
                   }
@@ -126,14 +125,14 @@ class _AdminListCaseScreenState extends State<AdminListCaseScreen> {
                       itemCount: filtered.length,
                       itemBuilder: (context, index) {
                         final item = filtered[index];
-                        return _CaseCard(
+                        return _HistoryCard(
                           item: item,
                           onTap: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (_) =>
-                                    AdminCaseDetailScreen(item: item),
+                                    AdminHistoryCaseDetailScreen(item: item),
                               ),
                             );
                           },
@@ -152,11 +151,11 @@ class _AdminListCaseScreenState extends State<AdminListCaseScreen> {
   }
 }
 
-class _CaseCard extends StatelessWidget {
+class _HistoryCard extends StatelessWidget {
   final Map<String, dynamic> item;
   final VoidCallback? onTap;
 
-  const _CaseCard({required this.item, this.onTap});
+  const _HistoryCard({required this.item, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -187,20 +186,20 @@ class _CaseCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  _StatusChip(status: status),
+                  _HistoryStatusBadge(status: status),
                 ],
               ),
               const SizedBox(height: 12),
-              _InfoRow(
+              _HistoryInfo(
                 label: 'Patient Type',
                 value: _stringValue(item['patient_type'], dashWhenEmpty: true),
               ),
-              _InfoRow(
+              _HistoryInfo(
                 label: 'Route',
                 value:
                     '${_stringValue(item['room_from'], dashWhenEmpty: true)} - ${_stringValue(item['room_to'], dashWhenEmpty: true)}',
               ),
-              _InfoRow(
+              _HistoryInfo(
                 label: 'Stretcher Type',
                 value: _stringValue(
                   item['stretcher_type'],
@@ -208,16 +207,21 @@ class _CaseCard extends StatelessWidget {
                 ),
               ),
               if (equipmentList.isNotEmpty)
-                _InfoRow(
+                _HistoryInfo(
                   label: 'Equipments',
                   value: _equipmentPreview(equipmentList),
                 ),
+              if (_stringValue(item['notes']).isNotEmpty)
+                _HistoryInfo(
+                  label: 'Notes',
+                  value: _stringValue(item['notes']),
+                ),
               const Divider(height: 24),
-              _InfoRow(
+              _HistoryInfo(
                 label: 'Requested By',
                 value: _composeName(item, 'requested_by'),
               ),
-              _InfoRow(
+              _HistoryInfo(
                 label: 'Assigned Porter',
                 value: _composeName(item, 'assigned_porter'),
               ),
@@ -225,10 +229,13 @@ class _CaseCard extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: _InfoRow(label: 'Created At', value: createdAt),
+                    child: _HistoryInfo(label: 'Created At', value: createdAt),
                   ),
                   Expanded(
-                    child: _InfoRow(label: 'Completed At', value: completedAt),
+                    child: _HistoryInfo(
+                      label: 'Completed At',
+                      value: completedAt,
+                    ),
                   ),
                 ],
               ),
@@ -239,71 +246,70 @@ class _CaseCard extends StatelessWidget {
     );
   }
 
+  // >>> ชื่อมี fallback เป็น username <<<
   static String _composeName(Map<String, dynamic> item, String prefix) {
     final first = _stringValue(item['${prefix}_fname']);
     final last = _stringValue(item['${prefix}_lname']);
-    final display = [first, last].where((value) => value.isNotEmpty).join(' ');
-    return display.isEmpty ? '-' : display;
+    final uname = _stringValue(item['${prefix}_username']);
+    final display = [first, last].where((v) => v.isNotEmpty).join(' ').trim();
+    if (display.isNotEmpty) return display;
+    if (uname.isNotEmpty) return uname;
+    return '-';
   }
 
   static String _stringValue(dynamic value, {bool dashWhenEmpty = false}) {
-    if (value == null) {
-      return dashWhenEmpty ? '-' : '';
-    }
+    if (value == null) return dashWhenEmpty ? '-' : '';
     final text = value.toString().trim();
-    if (text.isEmpty) {
+    if (text.isEmpty || text.toLowerCase() == 'null') {
       return dashWhenEmpty ? '-' : '';
     }
     return text;
   }
 
+  // >>> รองรับทั้ง "YYYY-MM-DD HH:mm:ss" และ ISO8601 ที่มี 'T' <<<
   static String _formatDate(dynamic value) {
-    if (value == null) {
-      return '-';
-    }
+    if (value == null) return '-';
+    final txt = value.toString().trim();
+    if (txt.isEmpty) return '-';
+    final candidate = txt.contains('T') ? txt : txt.replaceFirst(' ', 'T');
     try {
-      final parsed = DateTime.parse(value.toString()).toLocal();
-      return '${parsed.day.toString().padLeft(2, '0')}/${parsed.month.toString().padLeft(2, '0')}/${parsed.year} '
-          '${parsed.hour.toString().padLeft(2, '0')}:${parsed.minute.toString().padLeft(2, '0')}';
+      final dt = DateTime.parse(candidate).toLocal();
+      return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} '
+          '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
     } catch (_) {
-      return value.toString();
+      return '-';
     }
   }
 
   static List<String> _parseEquipments(dynamic value) {
-    if (value == null) {
-      return <String>[];
-    }
+    if (value == null) return <String>[];
     if (value is List) {
       return value
-          .map((element) {
-            if (element is Map<String, dynamic>) {
-              return element['name']?.toString() ?? '';
+          .map((e) {
+            if (e is Map<String, dynamic>) {
+              return e['name']?.toString() ??
+                  e['eqpt_name']?.toString() ??
+                  e['title']?.toString() ??
+                  '';
             }
-            return element.toString();
+            return e.toString();
           })
-          .map((element) => element.trim())
-          .where((element) => element.isNotEmpty)
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty && e.toLowerCase() != 'null')
           .toList();
     }
     final textValue = value.toString().trim();
-    if (textValue.isEmpty) {
-      return <String>[];
-    }
+    if (textValue.isEmpty) return <String>[];
     return textValue
         .split(',')
-        .map((element) => element.trim())
-        .where((element) => element.isNotEmpty)
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
         .toList();
   }
 
   static String _equipmentPreview(List<String> items, {int limit = 3}) {
-    if (items.isEmpty) {
-      return '';
-    }
-    if (items.length <= limit) {
-      return items.join(', ');
-    }
+    if (items.isEmpty) return '';
+    if (items.length <= limit) return items.join(', ');
     final shown = items.take(limit).join(', ');
     final remaining = items.length - limit;
     return '$shown (+$remaining more)';
@@ -332,21 +338,21 @@ class _CaseCard extends StatelessWidget {
   }
 }
 
-class AdminCaseDetailScreen extends StatelessWidget {
+class AdminHistoryCaseDetailScreen extends StatelessWidget {
   final Map<String, dynamic> item;
 
-  const AdminCaseDetailScreen({super.key, required this.item});
+  const AdminHistoryCaseDetailScreen({super.key, required this.item});
 
   @override
   Widget build(BuildContext context) {
-    final status = _CaseCard._stringValue(item['status']).toLowerCase();
-    final createdAt = _CaseCard._formatDate(item['created_at']);
-    final completedAt = _CaseCard._formatDate(item['completed_at']);
-    final equipments = _CaseCard._parseEquipments(item['equipments']);
-    final notes = _CaseCard._stringValue(item['notes']);
+    final status = _HistoryCard._stringValue(item['status']).toLowerCase();
+    final createdAt = _HistoryCard._formatDate(item['created_at']);
+    final completedAt = _HistoryCard._formatDate(item['completed_at']);
+    final equipments = _HistoryCard._parseEquipments(item['equipments']);
+    final notes = _HistoryCard._stringValue(item['notes']);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Case Detail')),
+      appBar: AppBar(title: const Text('History Detail')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Card(
@@ -376,7 +382,7 @@ class AdminCaseDetailScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            _CaseCard._stringValue(
+                            _HistoryCard._stringValue(
                               item['patient_id'],
                               dashWhenEmpty: true,
                             ),
@@ -388,7 +394,7 @@ class AdminCaseDetailScreen extends StatelessWidget {
                         ],
                       ),
                     ),
-                    _StatusChip(status: status),
+                    _HistoryStatusBadge(status: status),
                   ],
                 ),
                 const SizedBox(height: 20),
@@ -397,21 +403,21 @@ class AdminCaseDetailScreen extends StatelessWidget {
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 8),
-                _InfoRow(
+                _HistoryInfo(
                   label: 'Patient Type',
-                  value: _CaseCard._stringValue(
+                  value: _HistoryCard._stringValue(
                     item['patient_type'],
                     dashWhenEmpty: true,
                   ),
                 ),
-                _InfoRow(
+                _HistoryInfo(
                   label: 'Route',
                   value:
-                      '${_CaseCard._stringValue(item['room_from'], dashWhenEmpty: true)} - ${_CaseCard._stringValue(item['room_to'], dashWhenEmpty: true)}',
+                      '${_HistoryCard._stringValue(item['room_from'], dashWhenEmpty: true)} - ${_HistoryCard._stringValue(item['room_to'], dashWhenEmpty: true)}',
                 ),
-                _InfoRow(
+                _HistoryInfo(
                   label: 'Stretcher Type',
-                  value: _CaseCard._stringValue(
+                  value: _HistoryCard._stringValue(
                     item['stretcher_type'],
                     dashWhenEmpty: true,
                   ),
@@ -423,32 +429,10 @@ class AdminCaseDetailScreen extends StatelessWidget {
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 8),
-                  ..._CaseCard._buildEquipmentBullets(equipments),
+                  ..._HistoryCard._buildEquipmentBullets(equipments),
                 ],
-                const SizedBox(height: 20),
-                const Text(
-                  'Assignments',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 8),
-                _InfoRow(
-                  label: 'Requested By',
-                  value: _CaseCard._composeName(item, 'requested_by'),
-                ),
-                _InfoRow(
-                  label: 'Assigned Porter',
-                  value: _CaseCard._composeName(item, 'assigned_porter'),
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  'Time Tracking',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 8),
-                _InfoRow(label: 'Created At', value: createdAt),
-                _InfoRow(label: 'Completed At', value: completedAt),
                 if (notes.isNotEmpty) ...[
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
                   const Text(
                     'Notes',
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
@@ -459,6 +443,28 @@ class AdminCaseDetailScreen extends StatelessWidget {
                     style: const TextStyle(fontSize: 14, height: 1.4),
                   ),
                 ],
+                const SizedBox(height: 20),
+                const Text(
+                  'Assignments',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                _HistoryInfo(
+                  label: 'Requested By',
+                  value: _HistoryCard._composeName(item, 'requested_by'),
+                ),
+                _HistoryInfo(
+                  label: 'Assigned Porter',
+                  value: _HistoryCard._composeName(item, 'assigned_porter'),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Time Tracking',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                _HistoryInfo(label: 'Created At', value: createdAt),
+                _HistoryInfo(label: 'Completed At', value: completedAt),
               ],
             ),
           ),
@@ -468,11 +474,11 @@ class AdminCaseDetailScreen extends StatelessWidget {
   }
 }
 
-class _InfoRow extends StatelessWidget {
+class _HistoryInfo extends StatelessWidget {
   final String label;
   final String value;
 
-  const _InfoRow({required this.label, required this.value});
+  const _HistoryInfo({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -504,10 +510,10 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-class _StatusChip extends StatelessWidget {
+class _HistoryStatusBadge extends StatelessWidget {
   final String status;
 
-  const _StatusChip({required this.status});
+  const _HistoryStatusBadge({required this.status});
 
   Color _backgroundColor() {
     switch (status) {
@@ -535,7 +541,7 @@ class _StatusChip extends StatelessWidget {
     }
   }
 
-  String _localizeStatus() {
+  String _localizedStatus() {
     switch (status) {
       case 'pending':
         return 'Pending';
@@ -557,7 +563,7 @@ class _StatusChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        _localizeStatus(),
+        _localizedStatus(),
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w600,
@@ -568,10 +574,10 @@ class _StatusChip extends StatelessWidget {
   }
 }
 
-class _EmptyView extends StatelessWidget {
+class _HistoryEmptyView extends StatelessWidget {
   final String message;
 
-  const _EmptyView({required this.message});
+  const _HistoryEmptyView({required this.message});
 
   @override
   Widget build(BuildContext context) {
@@ -579,7 +585,7 @@ class _EmptyView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.folder_open, size: 64, color: Colors.grey),
+          const Icon(Icons.history, size: 64, color: Colors.grey),
           const SizedBox(height: 12),
           Text(
             message,
@@ -592,11 +598,11 @@ class _EmptyView extends StatelessWidget {
   }
 }
 
-class _ErrorView extends StatelessWidget {
+class _HistoryErrorView extends StatelessWidget {
   final String message;
   final Future<void> Function()? onRetry;
 
-  const _ErrorView({required this.message, this.onRetry});
+  const _HistoryErrorView({required this.message, this.onRetry});
 
   @override
   Widget build(BuildContext context) {

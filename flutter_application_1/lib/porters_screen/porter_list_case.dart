@@ -83,7 +83,7 @@ class _PorterCaseListScreenState extends State<PorterCaseListScreen>
     }
 
     final currentTab = tabs[selectedTabIndex];
-    print('Loading cases for tab: ' + currentTab);
+    print('Loading cases for tab: $currentTab');
 
     try {
       List<Map<String, dynamic>> fetchedCases = [];
@@ -128,9 +128,9 @@ class _PorterCaseListScreenState extends State<PorterCaseListScreen>
       }
 
       for (final c in fetchedCases) {
-        print('Case data: ' + c.toString());
+        print('Case data: $c');
       }
-      print('Total fetched cases: ' + fetchedCases.length.toString());
+      print('Total fetched cases: ${fetchedCases.length}');
 
       if (!mounted) {
         return;
@@ -140,7 +140,7 @@ class _PorterCaseListScreenState extends State<PorterCaseListScreen>
         cases = fetchedCases;
       });
     } catch (e) {
-      print('Error loading cases: ' + e.toString());
+      print('Error loading cases: $e');
     }
   }
 
@@ -179,7 +179,7 @@ class _PorterCaseListScreenState extends State<PorterCaseListScreen>
         }
       });
     } catch (e) {
-      print('Error updating case: ' + e.toString());
+      print('Error updating case: $e');
     }
   }
 

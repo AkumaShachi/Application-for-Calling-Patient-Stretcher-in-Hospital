@@ -51,7 +51,24 @@ class CasesHistoryService {
     throw Exception(message ?? 'Failed to fetch case history (status ${response.statusCode})');
   }
 
-  static Future<List<Map<String, dynamic>>> fetchHistoryForPorter(String username) async {
+  static Future<List<Map<String, dynamic>>> fetchHistoryForPorter(String username) {
+    return _filterHistoryByUsername(
+      username,
+      (item) => item['assigned_porter_username']?.toString(),
+    );
+  }
+
+  static Future<List<Map<String, dynamic>>> fetchHistoryForRequester(String username) {
+    return _filterHistoryByUsername(
+      username,
+      (item) => item['requested_by_username']?.toString(),
+    );
+  }
+
+  static Future<List<Map<String, dynamic>>> _filterHistoryByUsername(
+    String username,
+    String? Function(Map<String, dynamic> item) usernameSelector,
+  ) async {
     final trimmedUsername = username.trim();
     final history = await fetchHistory();
 
@@ -63,10 +80,14 @@ class CasesHistoryService {
 
     return history
         .where((item) {
-          final assigned = item['assigned_porter_username']?.toString();
-          return assigned != null && assigned.toLowerCase() == normalizedUsername;
+          final value = usernameSelector(item)?.trim();
+          if (value == null || value.isEmpty) {
+            return false;
+          }
+          return value.toLowerCase() == normalizedUsername;
         })
         .map((item) => Map<String, dynamic>.from(item))
         .toList();
   }
 }
+
