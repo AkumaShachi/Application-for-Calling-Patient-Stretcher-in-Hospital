@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'admin_list_case.dart';
+import 'admin_list_historycase.dart';
 import 'admin_stretcher.dart';
 import 'admin_equipments.dart';
 import 'admin_list_nurse.dart';
@@ -38,14 +40,12 @@ class AdminMenuPage extends StatelessWidget {
           _MenuOption(
             label: 'ที่มีอยู่ปัจจุบัน',
             description: 'รายการเคสที่กำลังดำเนินอยู่',
-            builder: (context) =>
-                const ComingSoonPage(title: 'เคสที่กำลังดำเนินอยู่'),
+            builder: (context) => const AdminListCaseScreen(),
           ),
           _MenuOption(
             label: 'ที่เสร็จแล้ว',
             description: 'ประวัติเคสที่ปิดงานแล้ว',
-            builder: (context) =>
-                const ComingSoonPage(title: 'เคสที่เสร็จแล้ว'),
+            builder: (context) => const AdminListHistoryCaseScreen(),
           ),
         ],
       ),

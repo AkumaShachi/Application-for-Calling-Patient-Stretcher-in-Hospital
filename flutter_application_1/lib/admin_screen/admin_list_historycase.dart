@@ -57,7 +57,7 @@ class _AdminListHistoryCaseScreenState
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Case History')),
+      appBar: AppBar(title: const Text('ประวัติเคส')),
       body: Container(
         color: theme.colorScheme.surface,
         child: Column(
@@ -66,7 +66,7 @@ class _AdminListHistoryCaseScreenState
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: TextField(
                 controller: _searchCtrl,
-                keyboardType: TextInputType.text, // อนุญาตตัวอักษรเช่น G12
+                keyboardType: TextInputType.text, // อนุญาตตัวอักษร เช่น G12
                 decoration: InputDecoration(
                   prefixIcon: const Icon(Icons.search),
                   suffixIcon: _searchQuery.isEmpty
@@ -75,7 +75,7 @@ class _AdminListHistoryCaseScreenState
                           icon: const Icon(Icons.clear),
                           onPressed: _searchCtrl.clear,
                         ),
-                  labelText: 'Search by Patient ID',
+                  labelText: 'ค้นหาหมายเลขผู้ป่วย',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -92,7 +92,7 @@ class _AdminListHistoryCaseScreenState
 
                   if (snapshot.hasError) {
                     return _HistoryErrorView(
-                      message: 'Failed to load history\n${snapshot.error}',
+                      message: 'โหลดประวัติไม่สำเร็จ\n${snapshot.error}',
                       onRetry: _refresh,
                     );
                   }
@@ -100,8 +100,8 @@ class _AdminListHistoryCaseScreenState
                   final data = snapshot.data ?? [];
                   final filtered = data.where(_matchesPatient).toList();
                   final emptyMessage = _searchQuery.isEmpty
-                      ? 'No history records found'
-                      : 'No history records match that patient ID';
+                      ? 'ยังไม่มีประวัติเคส'
+                      : 'ไม่พบประวัติที่ตรงกับหมายเลขผู้ป่วย';
 
                   if (filtered.isEmpty) {
                     return RefreshIndicator(
@@ -160,8 +160,8 @@ class _HistoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = _stringValue(item['status']).toLowerCase();
-    final createdAt = _formatDate(item['created_at']);
-    final completedAt = _formatDate(item['completed_at']);
+    final createdAt = _formatDate(item['created_at']); // วันที่แบบ พ.ศ.
+    final completedAt = _formatDate(item['completed_at']); // วันที่แบบ พ.ศ.
     final equipmentList = _parseEquipments(item['equipments']);
 
     return Card(
@@ -179,7 +179,7 @@ class _HistoryCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      'Patient ID: ${_stringValue(item['patient_id'], dashWhenEmpty: true)}',
+                      'หมายเลขผู้ป่วย: ${_stringValue(item['patient_id'], dashWhenEmpty: true)}',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -191,16 +191,16 @@ class _HistoryCard extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               _HistoryInfo(
-                label: 'Patient Type',
+                label: 'ประเภทผู้ป่วย',
                 value: _stringValue(item['patient_type'], dashWhenEmpty: true),
               ),
               _HistoryInfo(
-                label: 'Route',
+                label: 'เส้นทาง',
                 value:
                     '${_stringValue(item['room_from'], dashWhenEmpty: true)} - ${_stringValue(item['room_to'], dashWhenEmpty: true)}',
               ),
               _HistoryInfo(
-                label: 'Stretcher Type',
+                label: 'ประเภทเปล',
                 value: _stringValue(
                   item['stretcher_type'],
                   dashWhenEmpty: true,
@@ -208,32 +208,32 @@ class _HistoryCard extends StatelessWidget {
               ),
               if (equipmentList.isNotEmpty)
                 _HistoryInfo(
-                  label: 'Equipments',
+                  label: 'อุปกรณ์',
                   value: _equipmentPreview(equipmentList),
                 ),
               if (_stringValue(item['notes']).isNotEmpty)
                 _HistoryInfo(
-                  label: 'Notes',
+                  label: 'หมายเหตุ',
                   value: _stringValue(item['notes']),
                 ),
               const Divider(height: 24),
               _HistoryInfo(
-                label: 'Requested By',
+                label: 'ผู้ร้องขอ',
                 value: _composeName(item, 'requested_by'),
               ),
               _HistoryInfo(
-                label: 'Assigned Porter',
+                label: 'เจ้าหน้าที่เวรเปลที่ได้รับมอบหมาย',
                 value: _composeName(item, 'assigned_porter'),
               ),
               const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
-                    child: _HistoryInfo(label: 'Created At', value: createdAt),
+                    child: _HistoryInfo(label: 'สร้างเมื่อ', value: createdAt),
                   ),
                   Expanded(
                     child: _HistoryInfo(
-                      label: 'Completed At',
+                      label: 'เสร็จสิ้นเมื่อ',
                       value: completedAt,
                     ),
                   ),
@@ -266,16 +266,28 @@ class _HistoryCard extends StatelessWidget {
     return text;
   }
 
-  // >>> รองรับทั้ง "YYYY-MM-DD HH:mm:ss" และ ISO8601 ที่มี 'T' <<<
-  static String _formatDate(dynamic value) {
+  /// ✅ รองรับทั้ง "YYYY-MM-DD HH:mm:ss" และ ISO8601 ที่มี 'T'
+  /// ✅ แปลงปีเป็น พ.ศ. (+543) โดยค่าเริ่มต้น
+  static String _formatDate(
+    dynamic value, {
+    bool showTime = true,
+    bool buddhistEra = true, // เปิด พ.ศ. เป็นค่าเริ่มต้น
+    bool showEraSuffix =
+        false, // ถ้าต้องการให้มี "พ.ศ." ต่อท้าย ให้ส่ง true ตอนเรียกใช้
+  }) {
     if (value == null) return '-';
     final txt = value.toString().trim();
     if (txt.isEmpty) return '-';
     final candidate = txt.contains('T') ? txt : txt.replaceFirst(' ', 'T');
     try {
       final dt = DateTime.parse(candidate).toLocal();
-      return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} '
-          '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+      final d = dt.day.toString().padLeft(2, '0');
+      final m = dt.month.toString().padLeft(2, '0');
+      final y = (dt.year + (buddhistEra ? 543 : 0)).toString();
+      final hh = dt.hour.toString().padLeft(2, '0');
+      final mm = dt.minute.toString().padLeft(2, '0');
+      final datePart = '$d/$m/$y' + (showEraSuffix ? ' พ.ศ.' : '');
+      return showTime ? '$datePart $hh:$mm' : datePart;
     } catch (_) {
       return '-';
     }
@@ -312,7 +324,7 @@ class _HistoryCard extends StatelessWidget {
     if (items.length <= limit) return items.join(', ');
     final shown = items.take(limit).join(', ');
     final remaining = items.length - limit;
-    return '$shown (+$remaining more)';
+    return '$shown (+$remaining รายการ)';
   }
 
   static List<Widget> _buildEquipmentBullets(List<String> items) {
@@ -323,7 +335,7 @@ class _HistoryCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('- '),
+                const Text('• '),
                 Expanded(
                   child: Text(
                     item,
@@ -346,13 +358,13 @@ class AdminHistoryCaseDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = _HistoryCard._stringValue(item['status']).toLowerCase();
-    final createdAt = _HistoryCard._formatDate(item['created_at']);
-    final completedAt = _HistoryCard._formatDate(item['completed_at']);
+    final createdAt = _HistoryCard._formatDate(item['created_at']); // พ.ศ.
+    final completedAt = _HistoryCard._formatDate(item['completed_at']); // พ.ศ.
     final equipments = _HistoryCard._parseEquipments(item['equipments']);
     final notes = _HistoryCard._stringValue(item['notes']);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('History Detail')),
+      appBar: AppBar(title: const Text('รายละเอียดประวัติ')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Card(
@@ -373,7 +385,7 @@ class AdminHistoryCaseDetailScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'Patient ID',
+                            'หมายเลขผู้ป่วย',
                             style: TextStyle(
                               fontSize: 13,
                               color: Colors.black54,
@@ -399,24 +411,24 @@ class AdminHistoryCaseDetailScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
                 const Text(
-                  'Patient Details',
+                  'ข้อมูลผู้ป่วย',
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 8),
                 _HistoryInfo(
-                  label: 'Patient Type',
+                  label: 'ประเภทผู้ป่วย',
                   value: _HistoryCard._stringValue(
                     item['patient_type'],
                     dashWhenEmpty: true,
                   ),
                 ),
                 _HistoryInfo(
-                  label: 'Route',
+                  label: 'เส้นทาง',
                   value:
                       '${_HistoryCard._stringValue(item['room_from'], dashWhenEmpty: true)} - ${_HistoryCard._stringValue(item['room_to'], dashWhenEmpty: true)}',
                 ),
                 _HistoryInfo(
-                  label: 'Stretcher Type',
+                  label: 'ประเภทเปล',
                   value: _HistoryCard._stringValue(
                     item['stretcher_type'],
                     dashWhenEmpty: true,
@@ -425,7 +437,7 @@ class AdminHistoryCaseDetailScreen extends StatelessWidget {
                 if (equipments.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   const Text(
-                    'Equipments',
+                    'อุปกรณ์',
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 8),
@@ -434,7 +446,7 @@ class AdminHistoryCaseDetailScreen extends StatelessWidget {
                 if (notes.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   const Text(
-                    'Notes',
+                    'หมายเหตุ',
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 8),
@@ -445,26 +457,26 @@ class AdminHistoryCaseDetailScreen extends StatelessWidget {
                 ],
                 const SizedBox(height: 20),
                 const Text(
-                  'Assignments',
+                  'ผู้เกี่ยวข้อง',
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 8),
                 _HistoryInfo(
-                  label: 'Requested By',
+                  label: 'ผู้ร้องขอ',
                   value: _HistoryCard._composeName(item, 'requested_by'),
                 ),
                 _HistoryInfo(
-                  label: 'Assigned Porter',
+                  label: 'เจ้าหน้าที่เวรเปลที่ได้รับมอบหมาย',
                   value: _HistoryCard._composeName(item, 'assigned_porter'),
                 ),
                 const SizedBox(height: 20),
                 const Text(
-                  'Time Tracking',
+                  'เวลา',
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 8),
-                _HistoryInfo(label: 'Created At', value: createdAt),
-                _HistoryInfo(label: 'Completed At', value: completedAt),
+                _HistoryInfo(label: 'สร้างเมื่อ', value: createdAt),
+                _HistoryInfo(label: 'เสร็จสิ้นเมื่อ', value: completedAt),
               ],
             ),
           ),
@@ -541,16 +553,16 @@ class _HistoryStatusBadge extends StatelessWidget {
     }
   }
 
-  String _localizedStatus() {
+  String _localizeStatus() {
     switch (status) {
       case 'pending':
-        return 'Pending';
+        return 'รอจัดการ';
       case 'in_progress':
-        return 'In Progress';
+        return 'กำลังดำเนินการ';
       case 'completed':
-        return 'Completed';
+        return 'เสร็จสิ้น';
       default:
-        return status.isEmpty ? 'Unknown' : status;
+        return status.isEmpty ? 'ไม่ทราบสถานะ' : status;
     }
   }
 
@@ -563,7 +575,7 @@ class _HistoryStatusBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        _localizedStatus(),
+        _localizeStatus(),
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w600,
@@ -625,7 +637,7 @@ class _HistoryErrorView extends StatelessWidget {
                 child: ElevatedButton.icon(
                   onPressed: onRetry,
                   icon: const Icon(Icons.refresh),
-                  label: const Text('Retry'),
+                  label: const Text('ลองใหม่'),
                 ),
               ),
           ],

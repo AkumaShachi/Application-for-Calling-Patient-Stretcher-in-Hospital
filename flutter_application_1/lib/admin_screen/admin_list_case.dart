@@ -47,9 +47,7 @@ class _AdminListCaseScreenState extends State<AdminListCaseScreen> {
   }
 
   bool _matchesPatient(Map<String, dynamic> item) {
-    if (_searchQuery.isEmpty) {
-      return true;
-    }
+    if (_searchQuery.isEmpty) return true;
     final patientId = item['patient_id']?.toString().toLowerCase() ?? '';
     return patientId.contains(_searchQuery.toLowerCase());
   }
@@ -58,7 +56,7 @@ class _AdminListCaseScreenState extends State<AdminListCaseScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('All Cases')),
+      appBar: AppBar(title: const Text('รายการเคสทั้งหมด')),
       body: Container(
         color: theme.colorScheme.surface,
         child: Column(
@@ -67,7 +65,8 @@ class _AdminListCaseScreenState extends State<AdminListCaseScreen> {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: TextField(
                 controller: _searchCtrl,
-                keyboardType: TextInputType.number,
+                keyboardType:
+                    TextInputType.number, // ถ้า patient_id เป็นตัวเลขล้วน
                 decoration: InputDecoration(
                   prefixIcon: const Icon(Icons.search),
                   suffixIcon: _searchQuery.isEmpty
@@ -76,7 +75,7 @@ class _AdminListCaseScreenState extends State<AdminListCaseScreen> {
                           icon: const Icon(Icons.clear),
                           onPressed: _searchCtrl.clear,
                         ),
-                  labelText: 'Search by Patient ID',
+                  labelText: 'ค้นหาหมายเลขผู้ป่วย',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -93,7 +92,7 @@ class _AdminListCaseScreenState extends State<AdminListCaseScreen> {
 
                   if (snapshot.hasError) {
                     return _ErrorView(
-                      message: 'Failed to load cases\n${snapshot.error}',
+                      message: 'โหลดรายการเคสไม่สำเร็จ\n${snapshot.error}',
                       onRetry: _refresh,
                     );
                   }
@@ -101,8 +100,8 @@ class _AdminListCaseScreenState extends State<AdminListCaseScreen> {
                   final data = snapshot.data ?? [];
                   final filtered = data.where(_matchesPatient).toList();
                   final emptyMessage = _searchQuery.isEmpty
-                      ? 'No cases found'
-                      : 'No cases match that patient ID';
+                      ? 'ยังไม่มีเคส'
+                      : 'ไม่พบเคสที่ตรงกับหมายเลขผู้ป่วย';
 
                   if (filtered.isEmpty) {
                     return RefreshIndicator(
@@ -161,8 +160,8 @@ class _CaseCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = _stringValue(item['status']).toLowerCase();
-    final createdAt = _formatDate(item['created_at']);
-    final completedAt = _formatDate(item['completed_at']);
+    final createdAt = _formatDate(item['created_at']); // พ.ศ.
+    final completedAt = _formatDate(item['completed_at']); // พ.ศ.
     final equipmentList = _parseEquipments(item['equipments']);
 
     return Card(
@@ -180,7 +179,7 @@ class _CaseCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      'Patient ID: ${_stringValue(item['patient_id'], dashWhenEmpty: true)}',
+                      'หมายเลขผู้ป่วย: ${_stringValue(item['patient_id'], dashWhenEmpty: true)}',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -192,16 +191,16 @@ class _CaseCard extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               _InfoRow(
-                label: 'Patient Type',
+                label: 'ประเภทผู้ป่วย',
                 value: _stringValue(item['patient_type'], dashWhenEmpty: true),
               ),
               _InfoRow(
-                label: 'Route',
+                label: 'เส้นทาง',
                 value:
                     '${_stringValue(item['room_from'], dashWhenEmpty: true)} - ${_stringValue(item['room_to'], dashWhenEmpty: true)}',
               ),
               _InfoRow(
-                label: 'Stretcher Type',
+                label: 'ประเภทเปล',
                 value: _stringValue(
                   item['stretcher_type'],
                   dashWhenEmpty: true,
@@ -209,26 +208,29 @@ class _CaseCard extends StatelessWidget {
               ),
               if (equipmentList.isNotEmpty)
                 _InfoRow(
-                  label: 'Equipments',
+                  label: 'อุปกรณ์',
                   value: _equipmentPreview(equipmentList),
                 ),
               const Divider(height: 24),
               _InfoRow(
-                label: 'Requested By',
+                label: 'ผู้ร้องขอ',
                 value: _composeName(item, 'requested_by'),
               ),
               _InfoRow(
-                label: 'Assigned Porter',
+                label: 'เจ้าหน้าที่เวรเปลที่ได้รับมอบหมาย',
                 value: _composeName(item, 'assigned_porter'),
               ),
               const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
-                    child: _InfoRow(label: 'Created At', value: createdAt),
+                    child: _InfoRow(label: 'สร้างเมื่อ', value: createdAt),
                   ),
                   Expanded(
-                    child: _InfoRow(label: 'Completed At', value: completedAt),
+                    child: _InfoRow(
+                      label: 'เสร็จสิ้นเมื่อ',
+                      value: completedAt,
+                    ),
                   ),
                 ],
               ),
@@ -242,71 +244,80 @@ class _CaseCard extends StatelessWidget {
   static String _composeName(Map<String, dynamic> item, String prefix) {
     final first = _stringValue(item['${prefix}_fname']);
     final last = _stringValue(item['${prefix}_lname']);
-    final display = [first, last].where((value) => value.isNotEmpty).join(' ');
+    final display = [first, last].where((v) => v.isNotEmpty).join(' ');
     return display.isEmpty ? '-' : display;
   }
 
   static String _stringValue(dynamic value, {bool dashWhenEmpty = false}) {
-    if (value == null) {
-      return dashWhenEmpty ? '-' : '';
-    }
+    if (value == null) return dashWhenEmpty ? '-' : '';
     final text = value.toString().trim();
-    if (text.isEmpty) {
-      return dashWhenEmpty ? '-' : '';
-    }
+    if (text.isEmpty) return dashWhenEmpty ? '-' : '';
     return text;
   }
 
-  static String _formatDate(dynamic value) {
-    if (value == null) {
-      return '-';
-    }
+  /// ✅ แปลงปีเป็น พ.ศ. (+543) โดยค่าเริ่มต้น และคืนค่าเป็นรูปแบบ dd/MM/yyyy HH:mm
+  static String _formatDate(
+    dynamic value, {
+    bool showTime = true,
+    bool buddhistEra = true, // เปิด พ.ศ. เป็นค่าเริ่มต้น
+    bool showEraSuffix =
+        false, // ถ้าอยากให้มีคำว่า "พ.ศ." ต่อท้าย ให้ส่ง true ตอนเรียกใช้
+  }) {
+    if (value == null) return '-';
+    final raw = value.toString().trim();
+    if (raw.isEmpty) return '-';
+
+    DateTime dt;
     try {
-      final parsed = DateTime.parse(value.toString()).toLocal();
-      return '${parsed.day.toString().padLeft(2, '0')}/${parsed.month.toString().padLeft(2, '0')}/${parsed.year} '
-          '${parsed.hour.toString().padLeft(2, '0')}:${parsed.minute.toString().padLeft(2, '0')}';
+      dt = DateTime.parse(raw).toLocal();
     } catch (_) {
-      return value.toString();
+      // ถ้า parse ไม่ได้ ก็ส่งค่าดิบกลับไป
+      return raw;
     }
+
+    final d = dt.day.toString().padLeft(2, '0');
+    final m = dt.month.toString().padLeft(2, '0');
+    final y = (dt.year + (buddhistEra ? 543 : 0)).toString();
+    final hh = dt.hour.toString().padLeft(2, '0');
+    final mm = dt.minute.toString().padLeft(2, '0');
+
+    final datePart = '$d/$m/$y' + (showEraSuffix ? ' พ.ศ.' : '');
+    return showTime ? '$datePart $hh:$mm' : datePart;
   }
 
   static List<String> _parseEquipments(dynamic value) {
-    if (value == null) {
-      return <String>[];
-    }
+    if (value == null) return <String>[];
     if (value is List) {
       return value
-          .map((element) {
-            if (element is Map<String, dynamic>) {
-              return element['name']?.toString() ?? '';
+          .map((e) {
+            if (e is Map<String, dynamic>) {
+              // รองรับ key ชื่อแตกต่างกัน
+              return e['name']?.toString() ??
+                  e['eqpt_name']?.toString() ??
+                  e['title']?.toString() ??
+                  '';
             }
-            return element.toString();
+            return e.toString();
           })
-          .map((element) => element.trim())
-          .where((element) => element.isNotEmpty)
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
           .toList();
     }
     final textValue = value.toString().trim();
-    if (textValue.isEmpty) {
-      return <String>[];
-    }
+    if (textValue.isEmpty) return <String>[];
     return textValue
         .split(',')
-        .map((element) => element.trim())
-        .where((element) => element.isNotEmpty)
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
         .toList();
   }
 
   static String _equipmentPreview(List<String> items, {int limit = 3}) {
-    if (items.isEmpty) {
-      return '';
-    }
-    if (items.length <= limit) {
-      return items.join(', ');
-    }
+    if (items.isEmpty) return '';
+    if (items.length <= limit) return items.join(', ');
     final shown = items.take(limit).join(', ');
     final remaining = items.length - limit;
-    return '$shown (+$remaining more)';
+    return '$shown (+$remaining รายการ)';
   }
 
   static List<Widget> _buildEquipmentBullets(List<String> items) {
@@ -317,7 +328,7 @@ class _CaseCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('- '),
+                const Text('• '),
                 Expanded(
                   child: Text(
                     item,
@@ -340,13 +351,13 @@ class AdminCaseDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = _CaseCard._stringValue(item['status']).toLowerCase();
-    final createdAt = _CaseCard._formatDate(item['created_at']);
-    final completedAt = _CaseCard._formatDate(item['completed_at']);
+    final createdAt = _CaseCard._formatDate(item['created_at']); // พ.ศ.
+    final completedAt = _CaseCard._formatDate(item['completed_at']); // พ.ศ.
     final equipments = _CaseCard._parseEquipments(item['equipments']);
     final notes = _CaseCard._stringValue(item['notes']);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Case Detail')),
+      appBar: AppBar(title: const Text('รายละเอียดเคส')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Card(
@@ -367,7 +378,7 @@ class AdminCaseDetailScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'Patient ID',
+                            'หมายเลขผู้ป่วย',
                             style: TextStyle(
                               fontSize: 13,
                               color: Colors.black54,
@@ -393,24 +404,24 @@ class AdminCaseDetailScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
                 const Text(
-                  'Patient Details',
+                  'ข้อมูลผู้ป่วย',
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 8),
                 _InfoRow(
-                  label: 'Patient Type',
+                  label: 'ประเภทผู้ป่วย',
                   value: _CaseCard._stringValue(
                     item['patient_type'],
                     dashWhenEmpty: true,
                   ),
                 ),
                 _InfoRow(
-                  label: 'Route',
+                  label: 'เส้นทาง',
                   value:
                       '${_CaseCard._stringValue(item['room_from'], dashWhenEmpty: true)} - ${_CaseCard._stringValue(item['room_to'], dashWhenEmpty: true)}',
                 ),
                 _InfoRow(
-                  label: 'Stretcher Type',
+                  label: 'ประเภทเปล',
                   value: _CaseCard._stringValue(
                     item['stretcher_type'],
                     dashWhenEmpty: true,
@@ -419,7 +430,7 @@ class AdminCaseDetailScreen extends StatelessWidget {
                 if (equipments.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   const Text(
-                    'Equipments',
+                    'อุปกรณ์',
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 8),
@@ -427,30 +438,30 @@ class AdminCaseDetailScreen extends StatelessWidget {
                 ],
                 const SizedBox(height: 20),
                 const Text(
-                  'Assignments',
+                  'ผู้เกี่ยวข้อง',
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 8),
                 _InfoRow(
-                  label: 'Requested By',
+                  label: 'ผู้ร้องขอ',
                   value: _CaseCard._composeName(item, 'requested_by'),
                 ),
                 _InfoRow(
-                  label: 'Assigned Porter',
+                  label: 'เจ้าหน้าที่เวรเปลที่ได้รับมอบหมาย',
                   value: _CaseCard._composeName(item, 'assigned_porter'),
                 ),
                 const SizedBox(height: 20),
                 const Text(
-                  'Time Tracking',
+                  'เวลา',
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 8),
-                _InfoRow(label: 'Created At', value: createdAt),
-                _InfoRow(label: 'Completed At', value: completedAt),
+                _InfoRow(label: 'สร้างเมื่อ', value: createdAt),
+                _InfoRow(label: 'เสร็จสิ้นเมื่อ', value: completedAt),
                 if (notes.isNotEmpty) ...[
                   const SizedBox(height: 20),
                   const Text(
-                    'Notes',
+                    'หมายเหตุ',
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 8),
@@ -538,13 +549,13 @@ class _StatusChip extends StatelessWidget {
   String _localizeStatus() {
     switch (status) {
       case 'pending':
-        return 'Pending';
+        return 'รอจัดการ';
       case 'in_progress':
-        return 'In Progress';
+        return 'กำลังดำเนินการ';
       case 'completed':
-        return 'Completed';
+        return 'เสร็จสิ้น';
       default:
-        return status.isEmpty ? 'Unknown' : status;
+        return status.isEmpty ? 'ไม่ทราบสถานะ' : status;
     }
   }
 
@@ -619,7 +630,7 @@ class _ErrorView extends StatelessWidget {
                 child: ElevatedButton.icon(
                   onPressed: onRetry,
                   icon: const Icon(Icons.refresh),
-                  label: const Text('Retry'),
+                  label: const Text('ลองใหม่'),
                 ),
               ),
           ],

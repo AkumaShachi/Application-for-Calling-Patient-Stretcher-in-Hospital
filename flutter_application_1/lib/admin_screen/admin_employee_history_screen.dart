@@ -299,11 +299,17 @@ class _AdminEmployeeHistoryScreenState
       return source.map((item) => Map<String, dynamic>.from(item)).toList();
     }
 
+    final q = query.toLowerCase();
     return source
-        .where(
-          (item) =>
-              _valuesForSearch(item).any((value) => value.contains(query)),
-        )
+        .where((item) {
+          final id =
+              (item['patient_id'] ?? item['patientId'])
+                  ?.toString()
+                  .trim()
+                  .toLowerCase() ??
+              '';
+          return id.contains(q); // <-- ค้นหาเฉพาะ patientId
+        })
         .map((item) => Map<String, dynamic>.from(item))
         .toList();
   }
@@ -736,7 +742,7 @@ class _AdminEmployeeHistoryScreenState
                   _handleSearch();
                 },
               ),
-        labelText: 'ค้นหา (รหัสผู้ป่วย, เส้นทาง, สถานะ)',
+        labelText: 'ค้นหา หมายเลขผู้ป่วย',
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
       ),
     );
@@ -859,7 +865,7 @@ class _HistoryEntryCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      'รหัสผู้ป่วย: $patientId',
+                      'หมายเลขผู้ป่วย: $patientId',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
