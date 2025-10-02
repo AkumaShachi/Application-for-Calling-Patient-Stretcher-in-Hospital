@@ -1,6 +1,8 @@
 // ignore_for_file: use_build_context_synchronously
 
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'admin_list_case.dart';
 import 'admin_list_historycase.dart';
@@ -8,9 +10,37 @@ import 'admin_stretcher.dart';
 import 'admin_equipments.dart';
 import 'admin_list_nurse.dart';
 import 'admin_list_porter.dart';
+import '../editprofilescreen.dart';
+import '../loginscreen.dart';
 
-class AdminMenuPage extends StatelessWidget {
+class AdminMenuPage extends StatefulWidget {
   const AdminMenuPage({super.key});
+
+  @override
+  State<AdminMenuPage> createState() => _AdminMenuPageState();
+}
+
+class _AdminMenuPageState extends State<AdminMenuPage> {
+  String fname = '', lname = '', email = '', phone = '';
+  File? _selectedImage;
+  String? profileImageUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserInfo();
+  }
+
+  Future<void> _loadUserInfo() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      fname = prefs.getString('fname_U') ?? '';
+      lname = prefs.getString('lname_U') ?? '';
+      email = prefs.getString('email_U') ?? '';
+      phone = prefs.getString('phone_U') ?? '';
+      profileImageUrl = prefs.getString('profile_image');
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -73,10 +103,11 @@ class AdminMenuPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('เมนูผู้ดูแลระบบ'), centerTitle: true),
+      endDrawer: _buildDrawer(context), // ✅ Drawer อยู่ด้านขวา
       body: ListView.separated(
         padding: const EdgeInsets.all(16),
         itemCount: items.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 16),
+        separatorBuilder: (_, __) => const SizedBox(height: 16),
         itemBuilder: (context, index) {
           final item = items[index];
           return _AdminMenuCard(config: item);
@@ -84,11 +115,113 @@ class AdminMenuPage extends StatelessWidget {
       ),
     );
   }
+
+  Drawer _buildDrawer(BuildContext context) {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          const SizedBox(height: 30),
+          CircleAvatar(
+            radius: 60,
+            backgroundImage: _selectedImage != null
+                ? FileImage(_selectedImage!) as ImageProvider
+                : (profileImageUrl != null && profileImageUrl!.isNotEmpty
+                      ? NetworkImage(profileImageUrl!)
+                      : null),
+            child:
+                (_selectedImage == null &&
+                    (profileImageUrl == null || profileImageUrl!.isEmpty))
+                ? const Icon(Icons.person, size: 60)
+                : null,
+          ),
+
+          const SizedBox(height: 20),
+          ListTile(
+            leading: const Icon(Icons.person),
+            title: Text('$fname $lname'),
+          ),
+          ListTile(leading: const Icon(Icons.email), title: Text(email)),
+          ListTile(leading: const Icon(Icons.phone), title: Text(phone)),
+          ListTile(
+            leading: const Icon(Icons.edit),
+            title: const Text('แก้ไขข้อมูล'),
+            onTap: () async {
+              Navigator.pop(context);
+              final updated = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => EditProfileScreen(
+                    fname: fname,
+                    lname: lname,
+                    email: email,
+                    phone: phone,
+                    ImageUrl: profileImageUrl,
+                  ),
+                ),
+              );
+              if (updated != null) {
+                await _loadUserInfo(); // โหลด prefs ใหม่
+                setState(() {
+                  fname = updated['fname_U'] ?? fname;
+                  lname = updated['lname_U'] ?? lname;
+                  email = updated['email_U'] ?? email;
+                  phone = updated['phone_U'] ?? phone;
+                  profileImageUrl = updated['profile_image'] ?? profileImageUrl;
+                });
+              }
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.logout),
+            title: const Text('ออกจากระบบ'),
+            onTap: () async {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.clear();
+              if (context.mounted) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                );
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
 }
+
+/* ---------------- CONFIG CLASSES ---------------- */
+
+class _AdminMenuItemConfig {
+  const _AdminMenuItemConfig({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+    required this.options,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+  final List<_MenuOption> options;
+}
+
+class _MenuOption {
+  const _MenuOption({required this.label, this.description, this.builder});
+
+  final String label;
+  final String? description;
+  final WidgetBuilder? builder;
+}
+
+/* ---------------- MENU CARD ---------------- */
 
 class _AdminMenuCard extends StatelessWidget {
   const _AdminMenuCard({required this.config});
-
   final _AdminMenuItemConfig config;
 
   @override
@@ -179,71 +312,8 @@ class _AdminMenuCard extends StatelessWidget {
       },
     );
 
-    if (selected == null) {
-      return;
-    }
-
-    if (selected.builder != null) {
+    if (selected != null && selected.builder != null) {
       Navigator.of(context).push(MaterialPageRoute(builder: selected.builder!));
     }
-  }
-}
-
-class _AdminMenuItemConfig {
-  const _AdminMenuItemConfig({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.color,
-    required this.options,
-  });
-
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final Color color;
-  final List<_MenuOption> options;
-}
-
-class _MenuOption {
-  const _MenuOption({required this.label, this.description, this.builder});
-
-  final String label;
-  final String? description;
-  final WidgetBuilder? builder;
-}
-
-class ComingSoonPage extends StatelessWidget {
-  const ComingSoonPage({super.key, required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.construction, size: 72, color: Colors.grey),
-            const SizedBox(height: 16),
-            Text(
-              'ฟีเจอร์กำลังอยู่ระหว่างการพัฒนา',
-              style: Theme.of(context).textTheme.titleMedium,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'โปรดกลับมาใหม่อีกครั้งเร็วๆ นี้',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: Colors.black54),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

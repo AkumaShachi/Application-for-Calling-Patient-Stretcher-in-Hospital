@@ -205,8 +205,8 @@ class _NurseListCaseScreenState extends State<NurseListCaseScreen>
           bottom: TabBar(
             controller: _tabController,
             tabs: const [
-              Tab(text: '                  เคสทั้งหมด                  '),
-              Tab(text: '                  เคสของฉัน                  '),
+              Tab(text: 'เคสทั้งหมด'),
+              Tab(text: 'เคสของฉัน'),
             ],
           ),
         ),
