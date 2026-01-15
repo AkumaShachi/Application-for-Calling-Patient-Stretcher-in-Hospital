@@ -35,7 +35,7 @@ router.get('/cases/nurse/all', async (req, res) => {
   }
 });
 
-// ดึงเคสของ nurse โดย username
+// ดึงเคสของ nurse โดย username (เฉพาะที่ยังไม่เสร็จ)
 router.get('/cases/nurse/:username', async (req, res) => {
   try {
     const username = req.params.username;
@@ -71,6 +71,77 @@ router.get('/cases/nurse/:username', async (req, res) => {
     );
 
     res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to fetch cases', error: err.message });
+  }
+});
+
+// ดึงเคสทั้งหมดของ nurse (รวมที่เสร็จแล้วจาก recordhistory)
+router.get('/cases/nurse/:username/history', async (req, res) => {
+  try {
+    const username = req.params.username;
+    const [userRows] = await pool.query(
+      'SELECT user_num FROM users WHERE user_username = ?',
+      [username]
+    );
+
+    if (userRows.length === 0) return res.status(404).json({ message: 'User not found' });
+    const userId = userRows[0].user_num;
+
+    // ดึงเคสปัจจุบัน
+    const [currentCases] = await pool.query(
+      `SELECT c.case_id, 
+              c.case_patient_id AS patient_id, 
+              c.case_patient_type AS patient_type, 
+              c.case_room_from AS room_from, 
+              c.case_room_to AS room_to,
+              st.str_type_name AS stretcher_type, 
+              c.case_status AS status, 
+              c.case_created_at AS created_at,
+              NULL AS completed_at,
+              GROUP_CONCAT(e.eqpt_name SEPARATOR ', ') AS equipment,
+              u.user_fname AS fname_U, 
+              u.user_lname AS lname_U
+       FROM cases c
+       LEFT JOIN users u ON c.case_requested_by = u.user_num
+       LEFT JOIN stretchertypes st ON c.str_type_id = st.str_type_id
+       LEFT JOIN caseequipments ce ON c.case_id = ce.case_id
+       LEFT JOIN equipments e ON ce.eqpt_id = e.eqpt_id
+       WHERE c.case_requested_by = ?
+       GROUP BY c.case_id`,
+      [userId]
+    );
+
+    // ดึงเคสที่เสร็จแล้วจาก recordhistory
+    const [completedCases] = await pool.query(
+      `SELECT r.rhis_id AS case_id, 
+              r.rhis_patient_id AS patient_id, 
+              r.rhis_patient_type AS patient_type, 
+              r.rhis_room_from AS room_from, 
+              r.rhis_room_to AS room_to,
+              st.str_type_name AS stretcher_type, 
+              'completed' AS status, 
+              r.rhis_created_at AS created_at,
+              r.rhis_completed_at AS completed_at,
+              GROUP_CONCAT(e.eqpt_name SEPARATOR ', ') AS equipment,
+              u.user_fname AS fname_U, 
+              u.user_lname AS lname_U
+       FROM recordhistory r
+       LEFT JOIN users u ON r.rhis_requested_by = u.user_num
+       LEFT JOIN stretchertypes st ON r.str_type_id = st.str_type_id
+       LEFT JOIN recordequipments re ON r.rhis_id = re.rhis__id
+       LEFT JOIN equipments e ON re.eqpt_id = e.eqpt_id
+       WHERE r.rhis_requested_by = ?
+       GROUP BY r.rhis_id`,
+      [userId]
+    );
+
+    // รวมและเรียงลำดับตามเวลา
+    const allCases = [...currentCases, ...completedCases];
+    allCases.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    res.json(allCases);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Failed to fetch cases', error: err.message });

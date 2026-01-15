@@ -31,6 +31,21 @@ class GetcaseFunction {
     }
   }
 
+  // ดึงเคสทั้งหมดของ nurse (รวมที่เสร็จแล้ว)
+  static Future<List<Map<String, dynamic>>> fetchMyCasesNurseWithHistory(
+    String username,
+  ) async {
+    final url = Uri.parse('$baseUrl/cases/nurse/$username/history');
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      List data = json.decode(response.body);
+      return data.map((e) => Map<String, dynamic>.from(e)).toList();
+    } else {
+      throw Exception('Failed to fetch my cases with history');
+    }
+  }
+
   static Future<List<Map<String, dynamic>>> fetchAllCasesPorter() async {
     final url = Uri.parse('$baseUrl/cases/porter/all');
     final response = await http.get(url);

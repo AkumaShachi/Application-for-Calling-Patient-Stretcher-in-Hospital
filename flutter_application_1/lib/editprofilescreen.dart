@@ -77,166 +77,408 @@ class _EditProfileScreenState extends State<EditProfileScreen>
     super.dispose();
   }
 
+  bool _isSaving = false;
+
   Future<void> _saveProfile() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    final username = prefs.getString('id') ?? '';
-    if (username.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("ไม่พบข้อมูลผู้ใช้")));
-      return;
-    }
+    if (_isSaving) return; // Prevent double tap
 
-    final profileData = {
-      "fname_U": _fnameController.text,
-      "lname_U": _lnameController.text,
-      "email_U": _emailController.text,
-      "phone_U": _phoneController.text,
-    };
+    setState(() => _isSaving = true);
 
-    await updateProfileWithImage(
-      username,
-      profileData.map((k, v) => MapEntry(k, v.toString())),
-      _selectedImage,
-      EditProfileFunction.baseUrl!,
-    ).then((url) {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      final username = prefs.getString('id') ?? '';
+      print('🔹 Username: $username');
+      print('🔹 BASE_URL: ${EditProfileFunction.baseUrl}');
+
+      if (username.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("ไม่พบข้อมูลผู้ใช้"),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() => _isSaving = false);
+        return;
+      }
+
+      final profileData = {
+        "fname_U": _fnameController.text,
+        "lname_U": _lnameController.text,
+        "email_U": _emailController.text,
+        "phone_U": _phoneController.text,
+      };
+
+      print('🔹 Profile data: $profileData');
+      print('🔹 Selected image: $_selectedImage');
+
+      final url = await updateProfileWithImage(
+        username,
+        profileData.map((k, v) => MapEntry(k, v.toString())),
+        _selectedImage,
+        EditProfileFunction.baseUrl!,
+      );
+
+      print('🔹 Response URL: $url');
+
       if (url != null) {
         setState(() {
           profileImageUrl = url;
           _selectedImage = null;
         });
-        prefs.setString('profile_image', url);
+        await prefs.setString('profile_image', url);
       }
-    });
 
-    await prefs.setString('fname_U', _fnameController.text);
-    await prefs.setString('lname_U', _lnameController.text);
-    await prefs.setString('email_U', _emailController.text);
-    await prefs.setString('phone_U', _phoneController.text);
+      await prefs.setString('fname_U', _fnameController.text);
+      await prefs.setString('lname_U', _lnameController.text);
+      await prefs.setString('email_U', _emailController.text);
+      await prefs.setString('phone_U', _phoneController.text);
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("บันทึกข้อมูลสำเร็จ")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("✅ บันทึกข้อมูลสำเร็จ"),
+          backgroundColor: Colors.green,
+        ),
+      );
 
-    Navigator.pop(context, {...profileData, 'profile_image': profileImageUrl});
+      Navigator.pop(context, {
+        ...profileData,
+        'profile_image': profileImageUrl,
+      });
+    } catch (e) {
+      print('❌ Save profile error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("❌ เกิดข้อผิดพลาด: $e"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          // พื้นหลัง gradient + blur circle
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment(-1, -1),
-                end: Alignment(1, 1),
-                colors: [
-                  Theme.of(context).scaffoldBackgroundColor,
-                  AppTheme.lavender,
-                ],
-              ),
-            ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [AppTheme.deepPurple, AppTheme.purple, AppTheme.lavender],
           ),
-          Positioned(
-            top: -40,
-            left: -30,
-            child: _BlurCircle(
-              diameter: 220,
-              colors: [
-                AppTheme.purple.withOpacity(0.28),
-                AppTheme.deepPurple.withOpacity(0.18),
-              ],
-            ),
-          ),
-          Positioned(
-            bottom: -20,
-            right: -20,
-            child: _BlurCircle(
-              diameter: 220,
-              colors: [
-                AppTheme.purple.withOpacity(0.28),
-                AppTheme.deepPurple.withOpacity(0.18),
-              ],
-            ),
-          ),
-          SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 56),
-            child: Column(
-              children: [
-                FadeTransition(
-                  opacity: _titleFade,
-                  child: SlideTransition(
-                    position: _titleSlide,
-                    child: ShaderMask(
-                      shaderCallback: (rect) => const LinearGradient(
-                        colors: [AppTheme.deepPurple, AppTheme.purple],
-                      ).createShader(rect),
-                      child: const Text(
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Header with back button
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: Row(
+                  children: [
+                    // Back button
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.arrow_back_ios_new,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    // Title
+                    const Expanded(
+                      child: Text(
                         'แก้ไขข้อมูลส่วนตัว',
                         style: TextStyle(
-                          fontSize: 30,
-                          fontWeight: FontWeight.w800,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
-                const SizedBox(height: 28),
-                _GlassCard(
-                  child: Column(
-                    children: [
-                      Center(
-                        child: InkWell(
-                          onTap: () async {
-                            final image = await pickImage();
-                            if (image != null) {
-                              setState(() => _selectedImage = image);
-                            }
-                          },
-                          child: CircleAvatar(
-                            radius: 60,
-                            backgroundImage: _selectedImage != null
-                                ? FileImage(_selectedImage!) as ImageProvider
-                                : (profileImageUrl != null
-                                      ? NetworkImage(profileImageUrl!)
-                                      : null),
-                            child:
-                                (_selectedImage == null &&
-                                    profileImageUrl == null)
-                                ? const Icon(Icons.person, size: 60)
-                                : null,
+              ),
+
+              // Profile image section
+              const SizedBox(height: 20),
+              GestureDetector(
+                onTap: () async {
+                  final image = await pickImage();
+                  if (image != null) {
+                    setState(() => _selectedImage = image);
+                  }
+                },
+                child: Stack(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 3),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 15,
+                            offset: const Offset(0, 5),
                           ),
+                        ],
+                      ),
+                      child: CircleAvatar(
+                        radius: 55,
+                        backgroundColor: Colors.white,
+                        backgroundImage: _selectedImage != null
+                            ? FileImage(_selectedImage!) as ImageProvider
+                            : (profileImageUrl != null
+                                  ? NetworkImage(profileImageUrl!)
+                                  : null),
+                        child:
+                            (_selectedImage == null && profileImageUrl == null)
+                            ? Icon(
+                                Icons.person,
+                                size: 55,
+                                color: AppTheme.deepPurple,
+                              )
+                            : null,
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppTheme.deepPurple,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt,
+                          size: 18,
+                          color: Colors.white,
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      _buildField("ชื่อ", _fnameController),
-                      const SizedBox(height: 16),
-                      _buildField("นามสกุล", _lnameController),
-                      const SizedBox(height: 16),
-                      _buildField(
-                        "อีเมล",
-                        _emailController,
-                        keyboard: TextInputType.emailAddress,
-                      ),
-                      const SizedBox(height: 16),
-                      _buildField(
-                        "เบอร์โทร",
-                        _phoneController,
-                        keyboard: TextInputType.phone,
-                      ),
-                      const SizedBox(height: 28),
-                      _GradientButton(text: "บันทึก", onTap: _saveProfile),
-                    ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'แตะเพื่อเปลี่ยนรูป',
+                style: TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Form card
+              Expanded(
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(30),
+                      topRight: Radius.circular(30),
+                    ),
+                  ),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Section title
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppTheme.deepPurple.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                Icons.person_outline,
+                                color: AppTheme.deepPurple,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            const Text(
+                              'ข้อมูลส่วนตัว',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Form fields
+                        _buildFieldEnhanced(
+                          icon: Icons.badge_outlined,
+                          label: 'ชื่อ',
+                          controller: _fnameController,
+                          hint: 'กรอกชื่อ',
+                        ),
+                        const SizedBox(height: 16),
+                        _buildFieldEnhanced(
+                          icon: Icons.badge_outlined,
+                          label: 'นามสกุล',
+                          controller: _lnameController,
+                          hint: 'กรอกนามสกุล',
+                        ),
+                        const SizedBox(height: 16),
+                        _buildFieldEnhanced(
+                          icon: Icons.email_outlined,
+                          label: 'อีเมล',
+                          controller: _emailController,
+                          hint: 'example@email.com',
+                          keyboard: TextInputType.emailAddress,
+                        ),
+                        const SizedBox(height: 16),
+                        _buildFieldEnhanced(
+                          icon: Icons.phone_outlined,
+                          label: 'เบอร์โทร',
+                          controller: _phoneController,
+                          hint: '0xx-xxx-xxxx',
+                          keyboard: TextInputType.phone,
+                        ),
+                        const SizedBox(height: 32),
+
+                        // Save button
+                        SizedBox(
+                          width: double.infinity,
+                          child: _isSaving
+                              ? const Center(child: CircularProgressIndicator())
+                              : ElevatedButton(
+                                  onPressed: _saveProfile,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppTheme.deepPurple,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    elevation: 4,
+                                    shadowColor: AppTheme.deepPurple
+                                        .withOpacity(0.4),
+                                  ),
+                                  child: const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.save_outlined, size: 20),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'บันทึกข้อมูล',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Cancel button
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.grey.shade600,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              side: BorderSide(color: Colors.grey.shade300),
+                            ),
+                            child: const Text(
+                              'ยกเลิก',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFieldEnhanced({
+    required IconData icon,
+    required String label,
+    required TextEditingController controller,
+    String? hint,
+    TextInputType keyboard = TextInputType.text,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: Colors.grey.shade700,
+            fontSize: 13,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: TextFormField(
+            controller: controller,
+            keyboardType: keyboard,
+            decoration: InputDecoration(
+              prefixIcon: Icon(icon, color: AppTheme.deepPurple, size: 20),
+              hintText: hint,
+              hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 

@@ -18,12 +18,8 @@ class PorterCaseListScreen extends StatefulWidget {
 
 class _PorterCaseListScreenState extends State<PorterCaseListScreen>
     with TickerProviderStateMixin {
-  // Tabs: Vacant, In Progress, Completed
-  List<String> get tabs => [
-    'เคสที่ว่าง',
-    'เคสที่กำลังดำเนินการ',
-    'เคสที่เสร็จสิ้น',
-  ];
+  // Tabs: Vacant, Completed (In Progress ใช้ popup แทน)
+  List<String> get tabs => ['เคสที่ว่าง', 'เคสที่เสร็จสิ้น'];
 
   int selectedTabIndex = 0;
   String fname = '', lname = '', username = '', email = '', phone = '';
@@ -53,8 +49,6 @@ class _PorterCaseListScreenState extends State<PorterCaseListScreen>
     switch (tabLabel) {
       case 'เคสที่ว่าง':
         return 'pending';
-      case 'เคสที่กำลังดำเนินการ':
-        return 'in_progress';
       case 'เคสที่เสร็จสิ้น':
         return 'completed';
       default:
@@ -80,32 +74,19 @@ class _PorterCaseListScreenState extends State<PorterCaseListScreen>
     try {
       List<Map<String, dynamic>> fetchedCases = [];
 
-      if (selectedTabIndex == 2) {
-        // เสร็จสิ้น
+      if (selectedTabIndex == 1) {
+        // เสร็จสิ้น (tab index 1 เพราะลบ in_progress ออกแล้ว)
         fetchedCases = await RecordhistoryFunction.fetchCompletedCasesPorter(
           username,
         );
-        fetchedCases = fetchedCases
-            .where((c) {
-              // ใช้ case_completed_at ถ้ามี ถ้าไม่มีใช้ created_at
-              String dateStr = c['case_completed_at'] ?? c['created_at'] ?? '';
-              if (dateStr.isEmpty) return false;
-              try {
-                final date = DateTime.parse(dateStr).toLocal();
-                final now = DateTime.now();
-                return date.year == now.year &&
-                    date.month == now.month &&
-                    date.day == now.day;
-              } catch (e) {
-                return false;
-              }
-            })
-            .map((c) {
-              c['assigned_porter_username'] =
-                  c['assigned_porter_username'] ?? username;
-              return c;
-            })
-            .toList();
+        // แสดงเคสเสร็จสิ้นทั้งหมด (ไม่กรองวันที่)
+        fetchedCases = fetchedCases.map((c) {
+          c['assigned_porter_username'] =
+              c['assigned_porter_username'] ?? username;
+          // เพิ่ม status เพื่อใช้แสดงผลใน card
+          c['status'] = 'completed';
+          return c;
+        }).toList();
       } else {
         // Vacant or In Progress
         var myCases = await GetcaseFunction.fetchMyCasesPorter(username);
@@ -123,45 +104,373 @@ class _PorterCaseListScreenState extends State<PorterCaseListScreen>
     }
   }
 
+  // Helper function to format patient ID without duplicate HN
+  String _formatPatientId(String? patientId) {
+    if (patientId == null || patientId.isEmpty) return '-';
+    // Remove HN prefix if already exists
+    String cleanId = patientId.replaceFirst(
+      RegExp(r'^HN', caseSensitive: false),
+      '',
+    );
+    return cleanId;
+  }
+
   void handleCaseAction(Map<String, dynamic> item) async {
     final currentStatus = item['status']?.toString() ?? 'pending';
-    final newStatus = currentStatus == 'pending' ? 'in_progress' : 'completed';
 
+    if (currentStatus == 'pending') {
+      // Porter กดรับเคส -> อัปเดตเป็น in_progress แล้วแสดง popup
+      try {
+        final success = await UpdateCase.updateStatus(
+          item['case_id'].toString(),
+          'in_progress',
+          assignedPorter: username,
+        );
+        if (success) {
+          // อัปเดต item status locally
+          item['status'] = 'in_progress';
+          // แสดง popup กำลังดำเนินการ
+          _showInProgressPopup(item);
+        }
+      } catch (e) {
+        print('❌ Error updating case: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('เกิดข้อผิดพลาดในการรับเคส')),
+        );
+      }
+    } else if (currentStatus == 'in_progress') {
+      // กดเสร็จสิ้นจากหน้า list (ปกติจะไม่เกิดเพราะอยู่ใน popup)
+      _completeCase(item);
+    }
+  }
+
+  void _showInProgressPopup(Map<String, dynamic> item) {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // ไม่สามารถปิด popup โดยแตะข้างนอก
+      barrierColor: Colors.black87,
+      builder: (BuildContext dialogContext) {
+        return WillPopScope(
+          onWillPop: () async => false, // ป้องกันการกดปุ่ม back
+          child: Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.all(20),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Status Badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade100,
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.orange.shade700,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          'กำลังดำเนินการ',
+                          style: TextStyle(
+                            color: Colors.orange.shade800,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Patient ID
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.indigo.shade600,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Text(
+                          'HN',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        _formatPatientId(item['patient_id']?.toString()),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 32,
+                          color: Colors.black87,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Patient Type
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      'ประเภท: ${item['patient_type'] ?? '-'}',
+                      style: TextStyle(
+                        color: Colors.blue.shade700,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Room From
+                  _buildLocationCard(
+                    icon: Icons.location_on,
+                    color: Colors.green,
+                    label: 'จุดรับ',
+                    value: item['room_from'] ?? '-',
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Arrow
+                  Icon(
+                    Icons.arrow_downward_rounded,
+                    color: Colors.grey.shade400,
+                    size: 30,
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Room To
+                  _buildLocationCard(
+                    icon: Icons.flag,
+                    color: Colors.red,
+                    label: 'จุดส่ง',
+                    value: item['room_to'] ?? '-',
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Stretcher Type
+                  if (item['stretcher_type'] != null)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.airline_seat_flat,
+                            color: Colors.purple.shade600,
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            'เปล: ${item['stretcher_type']}',
+                            style: TextStyle(
+                              color: Colors.purple.shade700,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 30),
+
+                  // Slide to Complete Bar
+                  _SlideToCompleteWidget(
+                    onComplete: () async {
+                      Navigator.of(dialogContext).pop();
+                      await _completeCase(item);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Cancel Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        Navigator.of(dialogContext).pop();
+                        await _cancelCase(item);
+                      },
+                      icon: Icon(
+                        Icons.cancel_outlined,
+                        color: Colors.red.shade600,
+                      ),
+                      label: Text(
+                        'ยกเลิกเคส',
+                        style: TextStyle(
+                          color: Colors.red.shade600,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: Colors.red.shade300, width: 2),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildLocationCard({
+    required IconData icon,
+    required Color color,
+    required String label,
+    required String value,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: Colors.white, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: color.withOpacity(0.8),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    color: Colors.black87,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _completeCase(Map<String, dynamic> item) async {
     try {
       final success = await UpdateCase.updateStatus(
         item['case_id'].toString(),
-        newStatus,
+        'completed',
         assignedPorter: username,
       );
       if (success) {
-        if (newStatus == 'in_progress') {
-          // Auto-switch to In Progress tab
-          final inProgressIndex = tabs.indexOf('เคสที่กำลังดำเนินการ');
-          if (inProgressIndex != -1) {
-            setState(() {
-              selectedTabIndex = inProgressIndex;
-            });
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('รับเคสเรียบร้อย! กำลังดำเนินการ...'),
-              ),
-            );
-          }
-        } else if (newStatus == 'completed') {
-          // Switch to Completed tab
-          setState(() {
-            selectedTabIndex = 2; // Index of Completed
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('เคสเสร็จสิ้นเรียบร้อย!')),
-          );
-        }
-        loadCases(); // Reload to reflect changes
+        setState(() {
+          selectedTabIndex = 1; // ไปที่ tab เสร็จสิ้น (index 1)
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('🎉 เคสเสร็จสิ้นเรียบร้อย!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        loadCases();
       }
     } catch (e) {
-      print('❌ Error updating case: $e');
+      print('❌ Error completing case: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('เกิดข้อผิดพลาดในการอัปเดตสถานะ')),
+      );
+    }
+  }
+
+  Future<void> _cancelCase(Map<String, dynamic> item) async {
+    try {
+      final success = await UpdateCase.updateStatus(
+        item['case_id'].toString(),
+        'pending',
+        assignedPorter: null, // ลบ porter ที่รับเคสออก
+      );
+      if (success) {
+        setState(() {
+          selectedTabIndex = 0; // กลับไปที่ tab เคสที่ว่าง
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'ยกเลิกเคสเรียบร้อย เคสถูกส่งกลับไปรอดำเนินการ',
+            ),
+            backgroundColor: Colors.orange.shade600,
+          ),
+        );
+        loadCases();
+      }
+    } catch (e) {
+      print('❌ Error canceling case: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('เกิดข้อผิดพลาดในการยกเลิกเคส')),
       );
     }
   }
@@ -293,72 +602,456 @@ class _PorterCaseListScreenState extends State<PorterCaseListScreen>
 
   Drawer _buildDrawer(BuildContext context) {
     return Drawer(
-      child: ListView(
-        padding: EdgeInsets.zero,
+      backgroundColor: Colors.grey.shade50,
+      child: Column(
         children: [
-          UserAccountsDrawerHeader(
-            decoration: BoxDecoration(color: AppTheme.deepPurple),
-            accountName: Text(
-              '$fname $lname',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+          // Header with Gradient
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppTheme.deepPurple,
+                  AppTheme.purple,
+                  Colors.purple.shade300,
+                ],
+              ),
             ),
-            accountEmail: Text(email),
-            currentAccountPicture: CircleAvatar(
-              backgroundColor: Colors.white,
-              backgroundImage: _selectedImage != null
-                  ? FileImage(_selectedImage!) as ImageProvider
-                  : (profileImageUrl != null
-                        ? NetworkImage(profileImageUrl!)
-                        : null),
-              child: (_selectedImage == null && profileImageUrl == null)
-                  ? Icon(Icons.person, size: 40, color: AppTheme.deepPurple)
-                  : null,
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 30),
+                child: Column(
+                  children: [
+                    // Profile Image - Clickable
+                    GestureDetector(
+                      onTap: () async {
+                        Navigator.pop(context);
+                        final updated = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => EditProfileScreen(
+                              fname: fname,
+                              lname: lname,
+                              email: email,
+                              phone: phone,
+                              ImageUrl: profileImageUrl,
+                            ),
+                          ),
+                        );
+                        if (updated != null) {
+                          setState(() {
+                            fname = updated['fname_U'] ?? fname;
+                            lname = updated['lname_U'] ?? lname;
+                            email = updated['email_U'] ?? email;
+                            phone = updated['phone_U'] ?? phone;
+                            profileImageUrl =
+                                updated['profile_image'] ?? profileImageUrl;
+                          });
+                        }
+                      },
+                      child: Stack(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 3),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  blurRadius: 15,
+                                  offset: const Offset(0, 5),
+                                ),
+                              ],
+                            ),
+                            child: CircleAvatar(
+                              radius: 50,
+                              backgroundColor: Colors.white,
+                              backgroundImage: _selectedImage != null
+                                  ? FileImage(_selectedImage!) as ImageProvider
+                                  : (profileImageUrl != null
+                                        ? NetworkImage(profileImageUrl!)
+                                        : null),
+                              child:
+                                  (_selectedImage == null &&
+                                      profileImageUrl == null)
+                                  ? Icon(
+                                      Icons.person,
+                                      size: 50,
+                                      color: AppTheme.deepPurple,
+                                    )
+                                  : null,
+                            ),
+                          ),
+                          // Camera icon overlay
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.15),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                Icons.camera_alt,
+                                size: 18,
+                                color: AppTheme.deepPurple,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Name
+                    Text(
+                      '$fname $lname',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    // Role Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.3),
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.local_shipping,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            'พนักงานเปล',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
-          ListTile(
-            leading: const Icon(Icons.edit),
-            title: const Text('แก้ไขข้อมูลส่วนตัว'),
-            onTap: () async {
-              Navigator.pop(context);
-              final updated = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => EditProfileScreen(
-                    fname: fname,
-                    lname: lname,
-                    email: email,
-                    phone: phone,
-                    ImageUrl: profileImageUrl,
+
+          // Menu Items
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              children: [
+                // Contact Info Section
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'ข้อมูลติดต่อ',
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Email Card
+                      _buildInfoCard(
+                        icon: Icons.email_outlined,
+                        label: 'อีเมล',
+                        value: email.isNotEmpty ? email : '-',
+                        color: Colors.blue,
+                      ),
+                      const SizedBox(height: 10),
+                      // Phone Card
+                      _buildInfoCard(
+                        icon: Icons.phone_outlined,
+                        label: 'โทรศัพท์',
+                        value: phone.isNotEmpty ? phone : '-',
+                        color: Colors.green,
+                      ),
+                    ],
                   ),
                 ),
-              );
-              if (updated != null) {
-                setState(() {
-                  fname = updated['fname_U'] ?? fname;
-                  lname = updated['lname_U'] ?? lname;
-                  email = updated['email_U'] ?? email;
-                  phone = updated['phone_U'] ?? phone;
-                  profileImageUrl = updated['profile_image'] ?? profileImageUrl;
-                });
-              }
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.logout, color: Colors.red),
-            title: const Text(
-              'ออกจากระบบ',
-              style: TextStyle(color: Colors.red),
+
+                const SizedBox(height: 24),
+                Divider(color: Colors.grey.shade300, height: 1),
+                const SizedBox(height: 16),
+
+                // Menu Section
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    'เมนู',
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Edit Profile Button
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Material(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(16),
+                    child: InkWell(
+                      onTap: () async {
+                        Navigator.pop(context);
+                        final updated = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => EditProfileScreen(
+                              fname: fname,
+                              lname: lname,
+                              email: email,
+                              phone: phone,
+                              ImageUrl: profileImageUrl,
+                            ),
+                          ),
+                        );
+                        if (updated != null) {
+                          setState(() {
+                            fname = updated['fname_U'] ?? fname;
+                            lname = updated['lname_U'] ?? lname;
+                            email = updated['email_U'] ?? email;
+                            phone = updated['phone_U'] ?? phone;
+                            profileImageUrl =
+                                updated['profile_image'] ?? profileImageUrl;
+                          });
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: AppTheme.deepPurple.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                Icons.edit_outlined,
+                                color: AppTheme.deepPurple,
+                                size: 22,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'แก้ไขข้อมูลส่วนตัว',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                  Text(
+                                    'อัปเดตชื่อ, อีเมล, เบอร์โทร',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade500,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(
+                              Icons.chevron_right,
+                              color: Colors.grey.shade400,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            onTap: () async {
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.clear();
-              if (context.mounted) {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                );
-              }
-            },
+          ),
+
+          // Logout Button
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  // Show confirmation dialog
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      title: const Row(
+                        children: [
+                          Icon(Icons.logout, color: Colors.red),
+                          SizedBox(width: 10),
+                          Text('ออกจากระบบ'),
+                        ],
+                      ),
+                      content: const Text('คุณต้องการออกจากระบบใช่หรือไม่?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: Text(
+                            'ยกเลิก',
+                            style: TextStyle(color: Colors.grey.shade600),
+                          ),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: const Text(
+                            'ออกจากระบบ',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+
+                  if (confirm == true) {
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.clear();
+                    if (context.mounted) {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                      );
+                    }
+                  }
+                },
+                icon: const Icon(Icons.logout, size: 20),
+                label: const Text(
+                  'ออกจากระบบ',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red.shade50,
+                  foregroundColor: Colors.red.shade700,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(color: Colors.red.shade200),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoCard({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: Colors.grey.shade500,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -394,36 +1087,51 @@ class PorterCaseCard extends StatelessWidget {
     }
   }
 
+  // Helper function to format patient ID without duplicate HN
+  String formatPatientId(String? patientId) {
+    if (patientId == null || patientId.isEmpty) return '-';
+    // Remove HN prefix if already exists
+    String cleanId = patientId.replaceFirst(
+      RegExp(r'^HN', caseSensitive: false),
+      '',
+    );
+    return cleanId;
+  }
+
   @override
   Widget build(BuildContext context) {
     final status = item['status']?.toString() ?? 'pending';
     bool isPending = status == 'pending';
-    bool isInProgress = status == 'in_progress'; // Used for color logic
     bool isCompleted = status == 'completed';
 
-    Color statusColor = isPending
-        ? Colors.pink.shade100
-        : (isInProgress ? Colors.yellow.shade100 : Colors.green.shade100);
+    // Color scheme based on status
+    Color cardBorderColor = isPending
+        ? Colors.blue.shade200
+        : (isCompleted ? Colors.green.shade300 : Colors.orange.shade200);
+    Color statusBgColor = isPending
+        ? Colors.blue.shade50
+        : (isCompleted ? Colors.green.shade50 : Colors.orange.shade50);
     Color statusTextColor = isPending
-        ? Colors.pink.shade700
-        : (isInProgress ? Colors.orange.shade800 : Colors.green.shade800);
+        ? Colors.blue.shade700
+        : (isCompleted ? Colors.green.shade700 : Colors.orange.shade700);
+    IconData statusIcon = isPending
+        ? Icons.pending_actions
+        : (isCompleted ? Icons.check_circle : Icons.sync);
     String statusText = isPending
         ? 'รอดำเนินการ'
-        : (isInProgress ? 'กำลังดำเนินการ' : 'เสร็จสิ้น');
+        : (isCompleted ? 'เสร็จสิ้น' : 'กำลังดำเนินการ');
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: isCompleted
-            ? Border.all(color: Colors.green.shade200, width: 2)
-            : null,
+        border: Border.all(color: cardBorderColor, width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
+            color: cardBorderColor.withOpacity(0.2),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -438,106 +1146,316 @@ class PorterCaseCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Header Row - Status & Time
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
+                        horizontal: 14,
+                        vertical: 8,
                       ),
                       decoration: BoxDecoration(
-                        color: statusColor,
-                        borderRadius: BorderRadius.circular(20),
+                        color: statusBgColor,
+                        borderRadius: BorderRadius.circular(25),
+                        border: Border.all(
+                          color: statusTextColor.withOpacity(0.3),
+                        ),
                       ),
-                      child: Text(
-                        statusText,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(statusIcon, size: 16, color: statusTextColor),
+                          const SizedBox(width: 6),
+                          Text(
+                            statusText,
+                            style: TextStyle(
+                              color: statusTextColor,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.access_time,
+                            size: 14,
+                            color: Colors.grey.shade600,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            timeAgo(item['created_at'] ?? ''),
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Patient ID - Large
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.indigo.shade600,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text(
+                        'HN',
                         style: TextStyle(
-                          color: statusTextColor,
+                          color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontSize: 12,
+                          fontSize: 14,
                         ),
                       ),
                     ),
+                    const SizedBox(width: 10),
                     Text(
-                      timeAgo(item['created_at'] ?? ''),
-                      style: TextStyle(color: Colors.grey[500], fontSize: 13),
+                      formatPatientId(item['patient_id']?.toString()),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 24,
+                        color: Colors.black87,
+                        letterSpacing: 0.5,
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
-                Text(
-                  'HN${item['patient_id'] ?? ''}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
-                    color: Colors.black87,
+
+                // Patient Type Badge
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text.rich(
-                  TextSpan(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.purple.shade100, Colors.purple.shade50],
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      const TextSpan(
-                        text: 'ประเภทผู้ป่วย: ',
-                        style: TextStyle(color: Colors.grey),
+                      Icon(
+                        Icons.person_outline,
+                        size: 16,
+                        color: Colors.purple.shade700,
                       ),
-                      TextSpan(
-                        text: '${item['patient_type'] ?? '-'}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                      const SizedBox(width: 6),
+                      Text(
+                        'ประเภท: ${item['patient_type'] ?? '-'}',
+                        style: TextStyle(
+                          color: Colors.purple.shade700,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'จุดรับ-ส่ง: ${item['room_from'] ?? '-'} (รับ) - ${item['room_to'] ?? '-'} (ส่ง)',
-                  style: const TextStyle(color: Colors.black54, height: 1.4),
+                const SizedBox(height: 16),
+
+                // Location Cards
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: Column(
+                    children: [
+                      // From Location
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade500,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.location_on,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'จุดรับ',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade500,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  item['room_from'] ?? '-',
+                                  style: const TextStyle(
+                                    color: Colors.black87,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    height: 1.3,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Row(
+                          children: [
+                            const SizedBox(width: 13),
+                            Container(
+                              width: 2,
+                              height: 20,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Colors.green.shade400,
+                                    Colors.red.shade400,
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // To Location
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade500,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.flag,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'จุดส่ง',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade500,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  item['room_to'] ?? '-',
+                                  style: const TextStyle(
+                                    color: Colors.black87,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    height: 1.3,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
 
+                // Action Row
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    InkWell(
-                      onTap: onTap,
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(
-                          vertical: 8.0,
-                          horizontal: 4.0,
+                    TextButton.icon(
+                      onPressed: onTap,
+                      icon: Icon(
+                        Icons.info_outline,
+                        size: 18,
+                        color: Colors.blue.shade600,
+                      ),
+                      label: Text(
+                        'ดูรายละเอียด',
+                        style: TextStyle(
+                          color: Colors.blue.shade600,
+                          fontWeight: FontWeight.w600,
                         ),
-                        child: Text(
-                          'ดูรายละเอียด',
-                          style: TextStyle(
-                            color: Colors.blue,
-                            fontWeight: FontWeight.w600,
-                          ),
+                      ),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
                         ),
                       ),
                     ),
                     if (!isCompleted)
-                      SizedBox(
-                        height: 40,
-                        child: ElevatedButton(
-                          onPressed: () => onAction(item),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: isPending
-                                ? Colors.blue
-                                : Colors.green,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(horizontal: 24),
+                      ElevatedButton.icon(
+                        onPressed: () => onAction(item),
+                        icon: Icon(
+                          isPending ? Icons.play_arrow : Icons.check,
+                          size: 20,
+                        ),
+                        label: Text(
+                          isPending ? 'รับเคส' : 'เสร็จสิ้น',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
                           ),
-                          child: Text(
-                            isPending ? 'รับเคส' : 'เสร็จสิ้น',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isPending
+                              ? Colors.blue.shade600
+                              : Colors.green,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          elevation: 2,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 12,
                           ),
                         ),
                       ),
@@ -548,6 +1466,185 @@ class PorterCaseCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// Slide to Complete Widget
+class _SlideToCompleteWidget extends StatefulWidget {
+  final VoidCallback onComplete;
+
+  const _SlideToCompleteWidget({required this.onComplete});
+
+  @override
+  State<_SlideToCompleteWidget> createState() => _SlideToCompleteWidgetState();
+}
+
+class _SlideToCompleteWidgetState extends State<_SlideToCompleteWidget>
+    with SingleTickerProviderStateMixin {
+  double _dragPosition = 0;
+  double _maxDrag = 0;
+  bool _isCompleting = false;
+  late AnimationController _animationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  void _onDragUpdate(DragUpdateDetails details) {
+    if (_isCompleting) return;
+    setState(() {
+      _dragPosition += details.delta.dx;
+      if (_dragPosition < 0) _dragPosition = 0;
+      if (_dragPosition > _maxDrag) _dragPosition = _maxDrag;
+    });
+  }
+
+  void _onDragEnd(DragEndDetails details) {
+    if (_isCompleting) return;
+    if (_dragPosition >= _maxDrag * 0.85) {
+      // Slide completed
+      setState(() {
+        _isCompleting = true;
+        _dragPosition = _maxDrag;
+      });
+      widget.onComplete();
+    } else {
+      // Reset position
+      _animationController.reset();
+      _animationController.forward();
+      final startPosition = _dragPosition;
+      _animationController.addListener(() {
+        setState(() {
+          _dragPosition = startPosition * (1 - _animationController.value);
+        });
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final sliderWidth = constraints.maxWidth;
+        final thumbSize = 60.0;
+        _maxDrag = sliderWidth - thumbSize - 8;
+
+        final progress = _maxDrag > 0 ? (_dragPosition / _maxDrag) : 0.0;
+
+        return Container(
+          height: 70,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(35),
+            gradient: LinearGradient(
+              colors: [Colors.green.shade400, Colors.green.shade600],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.green.withOpacity(0.3),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              // Background progress
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 50),
+                width: _dragPosition + thumbSize + 4,
+                height: 70,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(35),
+                  color: Colors.green.shade700.withOpacity(0.3),
+                ),
+              ),
+              // Center text
+              Center(
+                child: AnimatedOpacity(
+                  opacity: 1 - progress,
+                  duration: const Duration(milliseconds: 100),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(width: 50),
+                      Icon(
+                        Icons.arrow_forward_ios,
+                        color: Colors.white54,
+                        size: 16,
+                      ),
+                      Icon(
+                        Icons.arrow_forward_ios,
+                        color: Colors.white70,
+                        size: 16,
+                      ),
+                      Icon(
+                        Icons.arrow_forward_ios,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'เลื่อนเพื่อเสร็จสิ้น',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Draggable thumb
+              Positioned(
+                left: _dragPosition + 4,
+                top: 5,
+                child: GestureDetector(
+                  onHorizontalDragUpdate: _onDragUpdate,
+                  onHorizontalDragEnd: _onDragEnd,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 100),
+                    width: thumbSize,
+                    height: thumbSize,
+                    decoration: BoxDecoration(
+                      color: _isCompleting
+                          ? Colors.green.shade800
+                          : Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 8,
+                          offset: const Offset(2, 2),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      _isCompleting ? Icons.check : Icons.chevron_right_rounded,
+                      color: _isCompleting
+                          ? Colors.white
+                          : Colors.green.shade600,
+                      size: 32,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

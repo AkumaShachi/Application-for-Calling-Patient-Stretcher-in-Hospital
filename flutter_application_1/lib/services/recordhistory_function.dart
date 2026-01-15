@@ -9,7 +9,7 @@ class RecordhistoryFunction {
   ) async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/recordhistory?username=$username'),
+        Uri.parse('$baseUrl/recordHistory?username=$username'),
       );
 
       if (response.statusCode == 200) {

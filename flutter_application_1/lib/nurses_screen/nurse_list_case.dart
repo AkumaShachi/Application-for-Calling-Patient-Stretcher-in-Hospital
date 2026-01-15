@@ -73,7 +73,9 @@ class _NurseListCaseScreenState extends State<NurseListCaseScreen>
   Future<void> _fetchCases() async {
     try {
       final fetchedAll = await GetcaseFunction.fetchAllCasesNurse();
-      final fetchedMy = await GetcaseFunction.fetchMyCasesNurse(username);
+      final fetchedMy = await GetcaseFunction.fetchMyCasesNurseWithHistory(
+        username,
+      );
       setState(() {
         allCases = fetchedAll;
         myCases = fetchedMy;
@@ -363,76 +365,456 @@ class _NurseListCaseScreenState extends State<NurseListCaseScreen>
 
   Drawer _buildDrawer(BuildContext context) {
     return Drawer(
-      child: ListView(
-        padding: EdgeInsets.zero,
+      backgroundColor: Colors.grey.shade50,
+      child: Column(
         children: [
-          const SizedBox(height: 30),
-          CircleAvatar(
-            radius: 60,
-            backgroundImage: _selectedImage != null
-                ? FileImage(_selectedImage!) as ImageProvider
-                : (profileImageUrl != null
-                      ? NetworkImage(profileImageUrl!)
-                      : null),
-            child: (_selectedImage == null && profileImageUrl == null)
-                ? const Icon(Icons.person, size: 60)
-                : null,
+          // Header with Gradient
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppTheme.deepPurple,
+                  AppTheme.purple,
+                  Colors.purple.shade300,
+                ],
+              ),
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 30),
+                child: Column(
+                  children: [
+                    // Profile Image with Border - Clickable
+                    GestureDetector(
+                      onTap: () async {
+                        Navigator.pop(context); // Close drawer
+                        final updated = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => EditProfileScreen(
+                              fname: fname,
+                              lname: lname,
+                              email: email,
+                              phone: phone,
+                              ImageUrl: profileImageUrl,
+                            ),
+                          ),
+                        );
+                        if (updated != null) {
+                          setState(() {
+                            fname = updated['fname_U'] ?? fname;
+                            lname = updated['lname_U'] ?? lname;
+                            email = updated['email_U'] ?? email;
+                            phone = updated['phone_U'] ?? phone;
+                            profileImageUrl =
+                                updated['profile_image'] ?? profileImageUrl;
+                          });
+                        }
+                      },
+                      child: Stack(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 3),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  blurRadius: 15,
+                                  offset: const Offset(0, 5),
+                                ),
+                              ],
+                            ),
+                            child: CircleAvatar(
+                              radius: 50,
+                              backgroundColor: Colors.white,
+                              backgroundImage: _selectedImage != null
+                                  ? FileImage(_selectedImage!) as ImageProvider
+                                  : (profileImageUrl != null
+                                        ? NetworkImage(profileImageUrl!)
+                                        : null),
+                              child:
+                                  (_selectedImage == null &&
+                                      profileImageUrl == null)
+                                  ? Icon(
+                                      Icons.person,
+                                      size: 50,
+                                      color: AppTheme.deepPurple,
+                                    )
+                                  : null,
+                            ),
+                          ),
+                          // Camera icon overlay
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.15),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                Icons.camera_alt,
+                                size: 18,
+                                color: AppTheme.deepPurple,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Name
+                    Text(
+                      '$fname $lname',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    // Role Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.3),
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.medical_services,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            'พยาบาล',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
-          const SizedBox(height: 20),
-          ListTile(
-            leading: const Icon(Icons.person),
-            title: Text('$fname $lname'),
-          ),
-          ListTile(leading: const Icon(Icons.email), title: Text(email)),
-          ListTile(leading: const Icon(Icons.phone), title: Text(phone)),
-          ListTile(
-            leading: const Icon(Icons.edit),
-            title: const Text('แก้ไขข้อมูล'),
-            onTap: () async {
-              Navigator.pop(context);
-              final updated = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => EditProfileScreen(
-                    fname: fname,
-                    lname: lname,
-                    email: email,
-                    phone: phone,
-                    ImageUrl: profileImageUrl,
+
+          // Menu Items
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              children: [
+                // Contact Info Section
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'ข้อมูลติดต่อ',
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Email Card
+                      _buildInfoCard(
+                        icon: Icons.email_outlined,
+                        label: 'อีเมล',
+                        value: email.isNotEmpty ? email : '-',
+                        color: Colors.blue,
+                      ),
+                      const SizedBox(height: 10),
+                      // Phone Card
+                      _buildInfoCard(
+                        icon: Icons.phone_outlined,
+                        label: 'โทรศัพท์',
+                        value: phone.isNotEmpty ? phone : '-',
+                        color: Colors.green,
+                      ),
+                    ],
                   ),
                 ),
-              );
-              if (updated != null) {
-                setState(() {
-                  fname = updated['fname_U'] ?? fname;
-                  lname = updated['lname_U'] ?? lname;
-                  email = updated['email_U'] ?? email;
-                  phone = updated['phone_U'] ?? phone;
-                  profileImageUrl = updated['profile_image'] ?? profileImageUrl;
-                });
-              }
-            },
+
+                const SizedBox(height: 24),
+                Divider(color: Colors.grey.shade300, height: 1),
+                const SizedBox(height: 16),
+
+                // Menu Section
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    'เมนู',
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Edit Profile Button
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Material(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(16),
+                    child: InkWell(
+                      onTap: () async {
+                        Navigator.pop(context);
+                        final updated = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => EditProfileScreen(
+                              fname: fname,
+                              lname: lname,
+                              email: email,
+                              phone: phone,
+                              ImageUrl: profileImageUrl,
+                            ),
+                          ),
+                        );
+                        if (updated != null) {
+                          setState(() {
+                            fname = updated['fname_U'] ?? fname;
+                            lname = updated['lname_U'] ?? lname;
+                            email = updated['email_U'] ?? email;
+                            phone = updated['phone_U'] ?? phone;
+                            profileImageUrl =
+                                updated['profile_image'] ?? profileImageUrl;
+                          });
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: AppTheme.deepPurple.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                Icons.edit_outlined,
+                                color: AppTheme.deepPurple,
+                                size: 22,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'แก้ไขข้อมูลส่วนตัว',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                  Text(
+                                    'อัปเดตชื่อ, อีเมล, เบอร์โทร',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade500,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(
+                              Icons.chevron_right,
+                              color: Colors.grey.shade400,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-          ListTile(
-            leading: const Icon(Icons.logout),
-            title: const Text('ออกจากระบบ'),
-            onTap: () async {
-              final prefs = await SharedPreferences.getInstance();
 
-              // 🗑️ เคลียร์ข้อมูลผู้ใช้ที่บันทึกไว้
-              await prefs.clear();
+          // Logout Button
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  // Show confirmation dialog
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      title: const Row(
+                        children: [
+                          Icon(Icons.logout, color: Colors.red),
+                          SizedBox(width: 10),
+                          Text('ออกจากระบบ'),
+                        ],
+                      ),
+                      content: const Text('คุณต้องการออกจากระบบใช่หรือไม่?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: Text(
+                            'ยกเลิก',
+                            style: TextStyle(color: Colors.grey.shade600),
+                          ),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: const Text(
+                            'ออกจากระบบ',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
 
-              // 🗑️ ถ้าไม่อยากลบทุกอย่าง แค่ลบเฉพาะที่เกี่ยวกับการจำรหัสผ่านก็ได้
-              // await prefs.remove('saved_username');
-              // await prefs.remove('saved_password');
+                  if (confirm == true) {
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.clear();
+                    if (context.mounted) {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                      );
+                    }
+                  }
+                },
+                icon: const Icon(Icons.logout, size: 20),
+                label: const Text(
+                  'ออกจากระบบ',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red.shade50,
+                  foregroundColor: Colors.red.shade700,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(color: Colors.red.shade200),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-              if (context.mounted) {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                );
-              }
-            },
+  Widget _buildInfoCard({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: Colors.grey.shade500,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -452,6 +834,33 @@ class CaseListView extends StatelessWidget {
     required this.formatEquipment,
   });
 
+  // Helper to determine status display
+  Map<String, dynamic> _getStatusDisplay(String? status) {
+    switch (status) {
+      case 'completed':
+        return {
+          'text': '✅ ส่งแล้ว',
+          'color': Colors.green,
+          'bgColor': Colors.green.shade50,
+          'icon': Icons.check_circle,
+        };
+      case 'in_progress':
+        return {
+          'text': '🚀 กำลังส่ง',
+          'color': Colors.orange,
+          'bgColor': Colors.orange.shade50,
+          'icon': Icons.local_shipping,
+        };
+      default: // pending
+        return {
+          'text': '⏳ รอดำเนินการ',
+          'color': Colors.blue,
+          'bgColor': Colors.blue.shade50,
+          'icon': Icons.pending_actions,
+        };
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
@@ -460,15 +869,22 @@ class CaseListView extends StatelessWidget {
       itemBuilder: (context, index) {
         final item = cases[index];
         final timeText = timeFormatter(item["created_at"] ?? '');
+        final status = item['status']?.toString() ?? 'pending';
+        final statusDisplay = _getStatusDisplay(status);
+        final bool isCompleted = status == 'completed';
 
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: (statusDisplay['color'] as Color).withOpacity(0.3),
+              width: 2,
+            ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.06),
+                color: (statusDisplay['color'] as Color).withOpacity(0.1),
                 blurRadius: 16,
                 offset: const Offset(0, 6),
               ),
@@ -476,111 +892,182 @@ class CaseListView extends StatelessWidget {
           ),
           child: Column(
             children: [
-              // Header with gradient
+              // Header with status-based gradient
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [
-                      AppTheme.deepPurple.withOpacity(0.1),
-                      AppTheme.lavender.withOpacity(0.3),
-                    ],
+                    colors: isCompleted
+                        ? [
+                            Colors.green.shade50,
+                            Colors.green.shade100.withOpacity(0.5),
+                          ]
+                        : [
+                            AppTheme.deepPurple.withOpacity(0.1),
+                            AppTheme.lavender.withOpacity(0.3),
+                          ],
                   ),
                   borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(20),
-                    topRight: Radius.circular(20),
+                    topLeft: Radius.circular(18),
+                    topRight: Radius.circular(18),
                   ),
                 ),
-                child: Row(
+                child: Column(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppTheme.deepPurple,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        Icons.person,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${item["fname_U"] ?? ""} ${item["lname_U"] ?? ""}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
+                    // Status Badge Row
+                    Row(
+                      children: [
+                        // Status Badge - Large & Clear
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
                           ),
-                          const SizedBox(height: 4),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
+                          decoration: BoxDecoration(
+                            color: statusDisplay['bgColor'] as Color,
+                            borderRadius: BorderRadius.circular(25),
+                            border: Border.all(
+                              color: (statusDisplay['color'] as Color)
+                                  .withOpacity(0.5),
+                              width: 1.5,
                             ),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(8),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Text(
-                              '${item['patient_id'] ?? '-'}',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.deepPurple,
-                                letterSpacing: 0.5,
+                            boxShadow: [
+                              BoxShadow(
+                                color: (statusDisplay['color'] as Color)
+                                    .withOpacity(0.2),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
                               ),
-                            ),
+                            ],
                           ),
-                        ],
-                      ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                statusDisplay['icon'] as IconData,
+                                size: 18,
+                                color: statusDisplay['color'] as Color,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                statusDisplay['text'] as String,
+                                style: TextStyle(
+                                  color: statusDisplay['color'] as Color,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Spacer(),
+                        // Time Badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 4,
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.access_time,
+                                size: 14,
+                                color: Colors.grey.shade600,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                timeText,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey.shade600,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 4,
+                    const SizedBox(height: 12),
+                    // Patient Info Row
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: isCompleted
+                                ? Colors.green.shade600
+                                : AppTheme.deepPurple,
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.access_time,
-                            size: 14,
-                            color: Colors.grey.shade600,
+                          child: const Icon(
+                            Icons.person,
+                            color: Colors.white,
+                            size: 20,
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            timeText,
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey.shade600,
-                              fontWeight: FontWeight.w500,
-                            ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${item["fname_U"] ?? ""} ${item["lname_U"] ?? ""}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.indigo.shade600,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: const Text(
+                                      'HN',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    _formatPatientId(
+                                      item['patient_id']?.toString(),
+                                    ),
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.grey.shade800,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -598,26 +1085,180 @@ class CaseListView extends StatelessWidget {
                       Colors.blue,
                     ),
                     const SizedBox(height: 12),
-                    _infoRow(
-                      Icons.location_on,
-                      'จุดรับ → จุดส่ง',
-                      '${item['room_from'] ?? '-'}\n→ ${item['room_to'] ?? '-'}',
-                      Colors.orange,
+                    // Location with better layout
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.shade500,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.location_on,
+                                  color: Colors.white,
+                                  size: 14,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'จุดรับ',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.grey.shade500,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    Text(
+                                      item['room_from'] ?? '-',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              left: 12,
+                              top: 4,
+                              bottom: 4,
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 2,
+                                  height: 16,
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [
+                                        Colors.green.shade400,
+                                        Colors.red.shade400,
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.shade500,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.flag,
+                                  color: Colors.white,
+                                  size: 14,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'จุดส่ง',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.grey.shade500,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    Text(
+                                      item['room_to'] ?? '-',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 12),
-                    _infoBadge(
-                      Icons.airline_seat_flat,
-                      'ประเภทเปล',
-                      item['stretcher_type'] ?? '-',
-                      AppTheme.deepPurple,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _infoBadgeSmall(
+                            Icons.airline_seat_flat,
+                            'เปล',
+                            item['stretcher_type'] ?? '-',
+                            AppTheme.deepPurple,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          flex: 2,
+                          child: _infoBadgeSmall(
+                            Icons.medical_services_outlined,
+                            'อุปกรณ์',
+                            formatEquipment(item['equipment']),
+                            Colors.teal,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                    _infoBadge(
-                      Icons.medical_services_outlined,
-                      'อุปกรณ์',
-                      formatEquipment(item['equipment']),
-                      Colors.teal,
-                    ),
+                    // Completed at info for completed cases
+                    if (isCompleted && item['completed_at'] != null) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade50,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.green.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.check_circle,
+                              size: 16,
+                              color: Colors.green.shade600,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'เสร็จสิ้นเมื่อ: ${_formatCompletedTime(item['completed_at'])}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.green.shade700,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -698,5 +1339,72 @@ class CaseListView extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Widget _infoBadgeSmall(
+    IconData icon,
+    String label,
+    String value,
+    Color color,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Helper function to format patient ID without duplicate HN
+  String _formatPatientId(String? patientId) {
+    if (patientId == null || patientId.isEmpty) return '-';
+    // Remove HN prefix if already exists
+    String cleanId = patientId.replaceFirst(
+      RegExp(r'^HN', caseSensitive: false),
+      '',
+    );
+    return cleanId;
+  }
+
+  // Helper function to format completed time
+  String _formatCompletedTime(String? completedAt) {
+    if (completedAt == null) return '-';
+    try {
+      final date = DateTime.parse(completedAt).toLocal();
+      final hour = date.hour.toString().padLeft(2, '0');
+      final minute = date.minute.toString().padLeft(2, '0');
+      final day = date.day.toString().padLeft(2, '0');
+      final month = date.month.toString().padLeft(2, '0');
+      return '$day/$month ${hour}:$minute น.';
+    } catch (e) {
+      return completedAt;
+    }
   }
 }
