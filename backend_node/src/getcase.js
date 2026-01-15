@@ -235,4 +235,94 @@ router.get('/cases/porter/:username', async (req, res) => {
 
 
 
+
+// =====================
+// GET /cases/admin/all
+// ดึงเคสทั้งหมดสำหรับ Admin (รวมเคสที่เสร็จจาก recordhistory)
+// =====================
+router.get('/cases/admin/all', async (req, res) => {
+  try {
+    // ดึงเคสปัจจุบันจาก cases table
+    const [currentCases] = await pool.query(
+      `SELECT c.case_id, 
+              c.case_patient_id AS patient_id, 
+              c.case_patient_type AS patient_type, 
+              c.case_room_from, 
+              c.case_room_to,
+              st.str_type_id,
+              st.str_type_name, 
+              c.case_status, 
+              c.case_created_at,
+              c.case_completed_at,
+              c.case_notes,
+              u_requester.user_username AS requested_by_username,
+              u_requester.user_fname AS fname_U, 
+              u_requester.user_lname AS lname_U,
+              u_porter.user_username AS assigned_porter_username,
+              u_porter.user_fname AS assigned_porter_fname,
+              u_porter.user_lname AS assigned_porter_lname,
+              GROUP_CONCAT(e.eqpt_name SEPARATOR ', ') AS equipment,
+              GROUP_CONCAT(e.eqpt_id SEPARATOR ',') AS equipment_ids,
+              'active' AS source
+       FROM cases c
+       LEFT JOIN users u_requester ON c.case_requested_by = u_requester.user_num
+       LEFT JOIN users u_porter ON c.case_assigned_porter = u_porter.user_num
+       LEFT JOIN stretchertypes st ON c.str_type_id = st.str_type_id
+       LEFT JOIN caseequipments ce ON c.case_id = ce.case_id
+       LEFT JOIN equipments e ON ce.eqpt_id = e.eqpt_id
+       GROUP BY c.case_id
+       ORDER BY c.case_created_at DESC`
+    );
+
+    // ดึงเคสที่เสร็จแล้วจาก recordhistory
+    const [completedCases] = await pool.query(
+      `SELECT 
+              r.rhis_id AS case_id,
+              r.rhis_patient_id AS patient_id, 
+              r.rhis_patient_type AS patient_type, 
+              r.rhis_room_from AS case_room_from, 
+              r.rhis_room_to AS case_room_to,
+              r.str_type_id,
+              st.str_type_name, 
+              'completed' AS case_status, 
+              r.rhis_created_at AS case_created_at,
+              r.rhis_completed_at AS case_completed_at,
+              NULL AS case_notes,
+              u_requester.user_username AS requested_by_username,
+              u_requester.user_fname AS fname_U, 
+              u_requester.user_lname AS lname_U,
+              u_porter.user_username AS assigned_porter_username,
+              u_porter.user_fname AS assigned_porter_fname,
+              u_porter.user_lname AS assigned_porter_lname,
+              GROUP_CONCAT(e.eqpt_name SEPARATOR ', ') AS equipment,
+              NULL AS equipment_ids,
+              'history' AS source
+       FROM recordhistory r
+       LEFT JOIN users u_requester ON r.rhis_requested_by = u_requester.user_num
+       LEFT JOIN users u_porter ON r.rhis_assigned_porter = u_porter.user_num
+       LEFT JOIN stretchertypes st ON r.str_type_id = st.str_type_id
+       LEFT JOIN recordequipments re ON r.rhis_id = re.rhis__id
+       LEFT JOIN equipments e ON re.eqpt_id = e.eqpt_id
+       GROUP BY r.rhis_id
+       ORDER BY r.rhis_completed_at DESC`
+    );
+
+    // รวมทั้งสอง arrays และเรียงตามเวลา
+    const allCases = [...currentCases, ...completedCases];
+    
+    // เรียงตาม created_at ล่าสุดก่อน
+    allCases.sort((a, b) => {
+      const dateA = new Date(a.case_created_at || 0);
+      const dateB = new Date(b.case_created_at || 0);
+      return dateB - dateA;
+    });
+
+    res.json(allCases);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to fetch admin cases', error: err.message });
+  }
+});
+
+
 module.exports = router;

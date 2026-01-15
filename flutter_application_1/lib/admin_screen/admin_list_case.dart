@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../design/theme.dart';
-import '../services/getcase_function.dart';
 import '../services/admin_function.dart';
 import '../loginscreen.dart';
 import 'admin_edit_case.dart';
@@ -14,31 +13,51 @@ class AdminListCaseScreen extends StatefulWidget {
   State<AdminListCaseScreen> createState() => _AdminListCaseScreenState();
 }
 
-class _AdminListCaseScreenState extends State<AdminListCaseScreen> {
+class _AdminListCaseScreenState extends State<AdminListCaseScreen>
+    with SingleTickerProviderStateMixin {
   List<Map<String, dynamic>> cases = [];
   List<Map<String, dynamic>> filteredCases = [];
   bool isLoading = true;
   String searchQuery = '';
+  String selectedFilter = 'all'; // all, active, completed
 
   // Selection Mode State
   bool isSelectionMode = false;
   Set<String> selectedCaseIds = {};
 
+  late TabController _tabController;
+
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(_onTabChanged);
     _fetchCases();
-    // Refresh every 10 seconds? Maybe not needed for admin unless specified
+  }
+
+  @override
+  void dispose() {
+    _tabController.removeListener(_onTabChanged);
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _onTabChanged() {
+    if (!_tabController.indexIsChanging) return;
+    setState(() {
+      selectedFilter = ['all', 'active', 'completed'][_tabController.index];
+      _applyFilters();
+    });
   }
 
   Future<void> _fetchCases() async {
     setState(() => isLoading = true);
     try {
-      // Reuse nurse fetch all as it likely gets all active cases
-      final data = await GetcaseFunction.fetchAllCasesNurse();
+      // ใช้ AdminFunction.fetchAllCasesAdmin() เพื่อดึงเคสทั้งหมดรวม history
+      final data = await AdminFunction.fetchAllCasesAdmin();
       setState(() {
         cases = data;
-        filteredCases = data;
+        _applyFilters();
         isLoading = false;
       });
     } catch (e) {
@@ -47,19 +66,35 @@ class _AdminListCaseScreenState extends State<AdminListCaseScreen> {
     }
   }
 
+  void _applyFilters() {
+    List<Map<String, dynamic>> result = cases;
+
+    // Apply tab filter
+    if (selectedFilter == 'active') {
+      result = result.where((c) => c['case_status'] != 'completed').toList();
+    } else if (selectedFilter == 'completed') {
+      result = result.where((c) => c['case_status'] == 'completed').toList();
+    }
+
+    // Apply search query
+    if (searchQuery.isNotEmpty) {
+      result = result.where((item) {
+        final patientId = item['patient_id']?.toString().toLowerCase() ?? '';
+        final fname = item['fname_U']?.toString().toLowerCase() ?? '';
+        final lname = item['lname_U']?.toString().toLowerCase() ?? '';
+        return patientId.contains(searchQuery.toLowerCase()) ||
+            fname.contains(searchQuery.toLowerCase()) ||
+            lname.contains(searchQuery.toLowerCase());
+      }).toList();
+    }
+
+    filteredCases = result;
+  }
+
   void _filterCases(String query) {
     setState(() {
       searchQuery = query;
-      if (query.isEmpty) {
-        filteredCases = cases;
-      } else {
-        filteredCases = cases.where((item) {
-          final patientId = item['patient_id']?.toString().toLowerCase() ?? '';
-          final fname = item['fname_U']?.toString().toLowerCase() ?? '';
-          return patientId.contains(query.toLowerCase()) ||
-              fname.contains(query.toLowerCase());
-        }).toList();
-      }
+      _applyFilters();
     });
   }
 
@@ -227,6 +262,94 @@ class _AdminListCaseScreenState extends State<AdminListCaseScreen> {
             ),
           ],
         ],
+        bottom: isSelectionMode
+            ? null
+            : TabBar(
+                controller: _tabController,
+                isScrollable: true,
+                indicatorColor: Colors.white,
+                indicatorWeight: 3,
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white70,
+                labelPadding: const EdgeInsets.symmetric(horizontal: 16),
+                tabs: [
+                  Tab(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.list_alt, size: 16),
+                        const SizedBox(width: 6),
+                        const Text('ทั้งหมด'),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '${cases.length}',
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Tab(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.hourglass_empty, size: 16),
+                        const SizedBox(width: 6),
+                        const Text('รอ/กำลังส่ง'),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '${cases.where((c) => c['case_status'] != 'completed').length}',
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Tab(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.check_circle, size: 16),
+                        const SizedBox(width: 6),
+                        const Text('ส่งแล้ว'),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '${cases.where((c) => c['case_status'] == 'completed').length}',
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
       ),
       body: Column(
         children: [
