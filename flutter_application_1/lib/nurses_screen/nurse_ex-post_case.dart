@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../design/theme.dart';
-import '../services/addcase_function.dart';
+import '.././services/Cases/case_add_function.dart';
 import 'nurse_list_case.dart';
 
 class NurseExCaseScreen extends StatefulWidget {
@@ -79,7 +79,7 @@ class _NurseExCaseScreenState extends State<NurseExCaseScreen>
       barrierDismissible: true,
       barrierLabel: '',
       transitionDuration: const Duration(milliseconds: 300),
-      pageBuilder: (_, __, ___) {
+      pageBuilder: (_, _, _) {
         return Center(
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
@@ -180,7 +180,7 @@ class _NurseExCaseScreenState extends State<NurseExCaseScreen>
           ),
         );
       },
-      transitionBuilder: (_, anim, __, child) {
+      transitionBuilder: (_, anim, _, child) {
         return ScaleTransition(
           scale: CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
           child: child,
@@ -201,7 +201,7 @@ class _NurseExCaseScreenState extends State<NurseExCaseScreen>
       'requestedBy': id,
       'equipmentIds': widget.equipments,
     };
-    await AddcaseFunction.saveCase(caseData);
+    await CaseAddService.createCase(caseData);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('บันทึกข้อมูลเคสเรียบร้อยแล้ว')),

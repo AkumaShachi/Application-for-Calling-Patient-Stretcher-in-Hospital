@@ -1,15 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.flutter_application_1">
 
-        <!-- เพิ่ม permissions ที่นี่ -->
-        <uses-permission android:name="android.permission.RECORD_AUDIO"/>
-        <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
-        <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>>
+    <!-- ========= Permissions ========= -->
+    <!-- ใช้ไมโครโฟนสำหรับบันทึก/รู้จำเสียง -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
+    <!-- อินเทอร์เน็ต (สำหรับเรียก API/สตรีมเสียง ฯลฯ) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- จัดการไฟล์ (เฉพาะ Android 10 ลงมา) -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
+    <!-- อ่านไฟล์ (Android 12 ลงมา) -->
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
+    <!-- Android 13+ แยกสิทธิ์สื่อ -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+
+    <!-- ถ้าคุณ “มีการ” ใช้ Foreground Service ระหว่างอัดเสียงค่อยเปิดอันนี้ -->
+    <!-- ไม่ได้ใช้ก็เก็บไว้ได้ ไม่กระทบ -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
+    <!-- ========= Application ========= -->
     <application
-        android:label="flutter_application_1"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:label="flutter_application_1"
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true">
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -19,34 +43,29 @@
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
-            <!-- Specifies an Android theme to apply to this Activity as soon as
-                 the Android process has started. This theme is visible to the user
-                 while the Flutter UI initializes. After that, this theme continues
-                 to determine the Window background behind the Flutter UI. -->
+
+            <!-- ธีมแรกเริ่มขณะ Flutter ยังบูต -->
             <meta-data
-              android:name="io.flutter.embedding.android.NormalTheme"
-              android:resource="@style/NormalTheme"
-              />
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
+
             <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <!-- Don't delete the meta-data below.
-             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
+
+        <!-- ห้ามลบ: Flutter ใช้ระบุ Embedding v2 -->
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
-    <!-- Required to query activities that can process text, see:
-         https://developer.android.com/training/package-visibility and
-         https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
 
-         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
+    <!-- ใช้โดย Flutter engine สำหรับ ACTION_PROCESS_TEXT -->
     <queries>
         <intent>
-            <action android:name="android.intent.action.PROCESS_TEXT"/>
-            <data android:mimeType="text/plain"/>
+            <action android:name="android.intent.action.PROCESS_TEXT" />
+            <data android:mimeType="text/plain" />
         </intent>
     </queries>
 </manifest>

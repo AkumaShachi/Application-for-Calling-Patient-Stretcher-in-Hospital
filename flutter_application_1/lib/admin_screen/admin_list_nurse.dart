@@ -1,0 +1,294 @@
+﻿import 'package:flutter/material.dart';
+
+import '../design/theme.dart';
+import '../services/Employee/employee_get_function.dart';
+import 'admin_employee_history_screen.dart';
+
+class AdminListNurseScreen extends StatefulWidget {
+  const AdminListNurseScreen({super.key});
+
+  @override
+  State<AdminListNurseScreen> createState() => _AdminListNurseScreenState();
+}
+
+class _AdminListNurseScreenState extends State<AdminListNurseScreen> {
+  final List<Map<String, dynamic>> _nurses = [];
+  final List<Map<String, dynamic>> _filtered = [];
+  final TextEditingController _searchCtrl = TextEditingController();
+
+  bool _initialLoading = true;
+  bool _refreshing = false;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchCtrl.addListener(_applyFilter);
+    _fetchData(initial: true);
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.removeListener(_applyFilter);
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _fetchData({bool initial = false}) async {
+    if (!mounted) return;
+
+    if (initial) {
+      setState(() {
+        _initialLoading = true;
+        _errorMessage = null;
+      });
+    } else {
+      setState(() {
+        _refreshing = true;
+      });
+    }
+
+    try {
+      final directory = await EmployeeGetService.fetchEmployees();
+      if (!mounted) return;
+      setState(() {
+        _nurses
+          ..clear()
+          ..addAll(directory.nurses);
+        _applyFilter();
+        _errorMessage = null;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = _describeError(error);
+      });
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        if (initial) {
+          _initialLoading = false;
+        }
+        _refreshing = false;
+      });
+    }
+  }
+
+  void _applyFilter() {
+    final query = _searchCtrl.text.trim().toLowerCase();
+    _filtered
+      ..clear()
+      ..addAll(
+        query.isEmpty
+            ? _nurses
+            : _nurses.where((nurse) {
+                final buffer = StringBuffer()
+                  ..write(nurse['user_fname'] ?? '')
+                  ..write(' ')
+                  ..write(nurse['user_lname'] ?? '')
+                  ..write(' ')
+                  ..write(nurse['user_id'] ?? '')
+                  ..write(' ')
+                  ..write(nurse['user_phone'] ?? '')
+                  ..write(' ')
+                  ..write(nurse['user_email'] ?? '');
+                return buffer.toString().toLowerCase().contains(query);
+              }),
+      );
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _openHistory(Map<String, dynamic> nurse) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => AdminEmployeeHistoryScreen(
+          employee: Map<String, dynamic>.from(nurse),
+          role: EmployeeHistoryRole.nurse,
+        ),
+      ),
+    );
+  }
+
+  String _describeError(Object error) {
+    final message = error.toString();
+    if (message.startsWith('Exception: ')) {
+      return message.substring(11);
+    }
+    return message;
+  }
+
+  String _initials(dynamic fname, dynamic lname) {
+    final first = fname?.toString().isNotEmpty == true
+        ? fname.toString()[0]
+        : '';
+    final last = lname?.toString().isNotEmpty == true
+        ? lname.toString()[0]
+        : '';
+    final result = '$first$last';
+    return result.isNotEmpty ? result.toUpperCase() : '?';
+  }
+
+  Widget _buildBody() {
+    if (_initialLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.red, size: 42),
+              const SizedBox(height: 12),
+              Text(_errorMessage!, textAlign: TextAlign.center),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: () => _fetchData(initial: true),
+                icon: const Icon(Icons.refresh),
+                label: const Text('ลองอีกครั้ง'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        if (_refreshing) const LinearProgressIndicator(minHeight: 2),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: TextField(
+            controller: _searchCtrl,
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.search),
+              hintText: 'ค้นหาพยาบาลตามชื่อ, รหัส, อีเมล หรือเบอร์โทร',
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: AppTheme.lavender),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: AppTheme.deepPurple),
+              ),
+            ),
+          ),
+        ),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: () => _fetchData(),
+            child: _filtered.isEmpty
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: const [
+                      SizedBox(height: 120),
+                      Icon(Icons.person_off, size: 64, color: Colors.grey),
+                      SizedBox(height: 12),
+                      Center(child: Text('ไม่พบพยาบาลที่ตรงกับการค้นหา')),
+                    ],
+                  )
+                : ListView.separated(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    itemBuilder: (context, index) {
+                      final nurse = _filtered[index];
+                      final imageUrl = nurse['user_profile_image']?.toString();
+                      final name =
+                          '${nurse['user_fname'] ?? ''} ${nurse['user_lname'] ?? ''}'
+                              .trim();
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.deepPurple.withOpacity(0.08),
+                              blurRadius: 14,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: ListTile(
+                          onTap: () => _openHistory(nurse),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 12,
+                          ),
+                          leading: CircleAvatar(
+                            radius: 26,
+                            backgroundColor: AppTheme.lavender,
+                            backgroundImage:
+                                imageUrl != null && imageUrl.isNotEmpty
+                                ? NetworkImage(imageUrl)
+                                : null,
+                            child: (imageUrl == null || imageUrl.isEmpty)
+                                ? Text(
+                                    _initials(
+                                      nurse['user_fname'],
+                                      nurse['user_lname'],
+                                    ),
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  )
+                                : null,
+                          ),
+                          title: Text(
+                            name.isEmpty ? 'ไม่ทราบชื่อ' : name,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 4),
+                              Text('รหัส: ${nurse['user_id'] ?? '-'}'),
+                              Text('เบอร์โทร: ${nurse['user_phone'] ?? '-'}'),
+                              Text('อีเมล: ${nurse['user_email'] ?? '-'}'),
+                            ],
+                          ),
+                          trailing: const Icon(
+                            Icons.history,
+                            color: Colors.deepPurple,
+                          ),
+                        ),
+                      );
+                    },
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    itemCount: _filtered.length,
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('รายชื่อพยาบาล'),
+        actions: [
+          IconButton(
+            onPressed: _refreshing || _initialLoading
+                ? null
+                : () => _fetchData(),
+            icon: const Icon(Icons.refresh),
+            tooltip: 'รีเฟรช',
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: Padding(padding: const EdgeInsets.all(16), child: _buildBody()),
+      ),
+    );
+  }
+}

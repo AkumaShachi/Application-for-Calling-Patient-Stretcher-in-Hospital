@@ -1,4 +1,4 @@
-// ignore_for_file: library_private_types_in_public_api, sized_box_for_whitespace, avoid_print, deprecated_member_use
+﻿// ignore_for_file: library_private_types_in_public_api, sized_box_for_whitespace, avoid_print, deprecated_member_use
 import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -6,9 +6,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../design/theme.dart';
 import '../editprofilescreen.dart';
 import '../loginscreen.dart';
-import '../services/getcase_function.dart';
-import '../services/recordhistory_function.dart';
-import '../services/updatecase_function.dart';
+import '../services/Cases/case_get_function.dart';
+import '../services/CasesHistory/caseshistory_get_function.dart';
+import '../services/Cases/case_update_function.dart';
 import 'porter_case_detail.dart';
 
 class PorterCaseListScreen extends StatefulWidget {
@@ -74,72 +74,112 @@ class _PorterCaseListScreenState extends State<PorterCaseListScreen>
       phone = prefs.getString('phone_U') ?? '';
       profileImageUrl = prefs.getString('profile_image');
     });
-    loadCases();
+    await loadCases();
   }
 
-  void loadCases() async {
-    if (username.isEmpty) return;
-    print('🔹 Loading cases for tab: ${tabs[selectedTabIndex]}');
+  Future<void> loadCases() async {
+    if (username.isEmpty) {
+      return;
+    }
+
+    final currentTab = tabs[selectedTabIndex];
+    print('Loading cases for tab: $currentTab');
+
     try {
       List<Map<String, dynamic>> fetchedCases = [];
-      switch (tabs[selectedTabIndex]) {
-        case 'ทั้งหมด':
-          var activeCases = await GetcaseFunction.fetchMyCasesPorter(username);
-          fetchedCases = activeCases
-              .where((c) => c['status'] != 'completed')
-              .toList();
-          break;
 
-        case 'รอดำเนินการ':
-        case 'กำลังดำเนินการ':
-          var myCases = await GetcaseFunction.fetchMyCasesPorter(username);
-          var selectedStatus = statusKey(tabs[selectedTabIndex]);
-          fetchedCases = myCases
-              .where((c) => c['status'] == selectedStatus)
-              .toList();
-          break;
+      if (currentTab == 'เสร็จสิ้น') {
+        final historyEntries = await CasesHistoryService.fetchHistoryForPorter(
+          username,
+        );
+        fetchedCases = historyEntries.map((entry) {
+          final normalized = Map<String, dynamic>.from(entry);
+          normalized['case_id'] =
+              normalized['case_id'] ?? normalized['history_id'];
+          normalized['status'] = (normalized['status'] ?? 'completed')
+              .toString();
+          normalized['assigned_porter_username'] =
+              (normalized['assigned_porter_username'] ?? username).toString();
+          return normalized;
+        }).toList();
+      } else {
+        final porterCases = await CaseGetService.fetchCasesForPorter(username);
+        final cloned = porterCases
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList();
 
-        case 'เสร็จสิ้น':
-          fetchedCases = await RecordhistoryFunction.fetchCompletedCasesPorter(
-            username,
-          );
-          fetchedCases = fetchedCases.map((c) {
-            c['assigned_porter_username'] =
-                c['assigned_porter_username'] ?? username;
-            return c;
-          }).toList();
-          break;
+        switch (currentTab) {
+          case 'ทั้งหมด':
+            fetchedCases = cloned
+                .where((c) => (c['status']?.toString() ?? '') != 'completed')
+                .toList();
+            break;
+          case 'รอดำเนินการ':
+          case 'กำลังดำเนินการ':
+            final selectedStatus = statusKey(currentTab);
+            fetchedCases = cloned
+                .where((c) => c['status']?.toString() == selectedStatus)
+                .toList();
+            break;
+          default:
+            fetchedCases = cloned;
+            break;
+        }
       }
 
-      for (var c in fetchedCases) {
-        print('🔹 Case Map: $c');
+      for (final c in fetchedCases) {
+        print('Case data: $c');
       }
-      print('🔹 Total fetched cases: ${fetchedCases.length}');
+      print('Total fetched cases: ${fetchedCases.length}');
+
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         cases = fetchedCases;
       });
     } catch (e) {
-      print('❌ Error loading cases: $e');
+      print('Error loading cases: $e');
     }
   }
 
-  void handleCaseAction(Map<String, dynamic> item) async {
+  Future<void> handleCaseAction(Map<String, dynamic> item) async {
     final currentStatus = item['status']?.toString() ?? 'pending';
     final newStatus = currentStatus == 'pending' ? 'in_progress' : 'completed';
+    final caseId = item['case_id'] ?? item['caseId'];
+
+    if (caseId == null) {
+      print('Error updating case: missing case_id');
+      return;
+    }
+
     try {
-      final success = await UpdateCase.updateStatus(
-        item['case_id'].toString(),
-        newStatus,
+      final response = await CaseUpdateService.updateCase(
+        caseId.toString(),
+        status: newStatus,
         assignedPorter: username,
       );
-      if (success) {
-        setState(() {
-          item['status'] = newStatus;
-        });
+      final updatedCase = response['case'] as Map<String, dynamic>?;
+
+      if (!mounted) {
+        return;
       }
+
+      setState(() {
+        item['status'] = updatedCase?['status']?.toString() ?? newStatus;
+        final assigned = updatedCase?['assignedPorter'];
+        if (assigned != null) {
+          item['assigned_porter_username'] = assigned.toString();
+        } else {
+          item['assigned_porter_username'] ??= username;
+        }
+        if (updatedCase?['completedAt'] != null) {
+          item['completed_at'] = updatedCase?['completedAt'];
+        }
+      });
     } catch (e) {
-      print('❌ Error updating case: $e');
+      print('Error updating case: $e');
     }
   }
 
@@ -310,9 +350,9 @@ class _PorterCaseListScreenState extends State<PorterCaseListScreen>
           return Padding(
             padding: const EdgeInsets.only(right: 8),
             child: GestureDetector(
-              onTap: () {
+              onTap: () async {
                 setState(() => selectedTabIndex = index);
-                loadCases();
+                await loadCases();
               },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
@@ -361,14 +401,15 @@ class AnimatedCaseCard extends StatelessWidget {
   });
 
   String timeAgo(String createdAt) {
-    final createdTime = DateTime.parse(createdAt).toLocal();
-    final now = DateTime.now();
-    final diff = now.difference(createdTime);
-    if (diff.inSeconds < 60) return '${diff.inSeconds}s';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m';
-    if (diff.inHours < 24) return '${diff.inHours}h';
-    if (diff.inDays < 7) return '${diff.inDays}d';
-    return '${createdTime.day}/${createdTime.month}/${createdTime.year}';
+    try {
+      final date = DateTime.parse(createdAt);
+      final diff = DateTime.now().difference(date);
+      if (diff.inMinutes < 60) return '${diff.inMinutes} นาทีที่แล้ว';
+      if (diff.inHours < 24) return '${diff.inHours} ชั่วโมงที่แล้ว';
+      return '${diff.inDays} วันก่อน';
+    } catch (e) {
+      return createdAt;
+    }
   }
 
   @override

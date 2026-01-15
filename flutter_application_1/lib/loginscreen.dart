@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'admin_screen/admin_menu.dart';
 import 'nurses_screen/nurse_list_case.dart';
 import 'porters_screen/porter_list_case.dart';
 import 'registerscreen.dart';
@@ -139,6 +140,11 @@ class _LoginScreenState extends State<LoginScreen>
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const PorterCaseListScreen()),
+        );
+      } else if (role == 'admin') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const AdminMenuPage()),
         );
       } else {
         _showMsg('บทบาทผู้ใช้ไม่ถูกต้อง');
