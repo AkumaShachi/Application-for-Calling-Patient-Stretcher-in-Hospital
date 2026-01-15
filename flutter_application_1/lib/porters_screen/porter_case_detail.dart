@@ -11,128 +11,230 @@ class PorterCaseDetailScreen extends StatefulWidget {
   State<PorterCaseDetailScreen> createState() => _PorterCaseDetailScreenState();
 }
 
-class _PorterCaseDetailScreenState extends State<PorterCaseDetailScreen>
-    with TickerProviderStateMixin {
-  late final AnimationController _inCtrl = AnimationController(
-    vsync: this,
-    duration: AppMotion.medium,
-  );
-  late final Animation<Offset> _slide = Tween<Offset>(
-    begin: const Offset(0, 0.1),
-    end: Offset.zero,
-  ).animate(CurvedAnimation(parent: _inCtrl, curve: AppMotion.ease));
-  late final Animation<double> _fade = CurvedAnimation(
-    parent: _inCtrl,
-    curve: AppMotion.ease,
-  );
-  late final Animation<double> _scale = Tween<double>(
-    begin: 0.97,
-    end: 1.0,
-  ).animate(CurvedAnimation(parent: _inCtrl, curve: AppMotion.pop));
-
-  @override
-  void initState() {
-    super.initState();
-    Future.delayed(const Duration(milliseconds: 150), _inCtrl.forward);
-  }
-
-  @override
-  void dispose() {
-    _inCtrl.dispose();
-    super.dispose();
+class _PorterCaseDetailScreenState extends State<PorterCaseDetailScreen> {
+  String timeAgo(String createdAt) {
+    try {
+      final createdTime = DateTime.parse(createdAt).toLocal();
+      final now = DateTime.now();
+      final diff = now.difference(createdTime);
+      if (diff.inSeconds < 60) return '${diff.inSeconds}s';
+      if (diff.inMinutes < 60) return '${diff.inMinutes}m';
+      if (diff.inHours < 24) return '${diff.inHours}h';
+      return '${diff.inDays}d';
+    } catch (e) {
+      return '';
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final item = widget.item;
+    final status = item['status']?.toString() ?? 'pending';
+    bool isPending = status == 'pending';
+    bool isInProgress = status == 'in_progress';
+
+    Color statusColor = isPending
+        ? Colors.pink.shade100
+        : (isInProgress ? Colors.yellow.shade100 : Colors.green.shade100);
+    Color statusTextColor = isPending
+        ? Colors.pink.shade700
+        : (isInProgress ? Colors.orange.shade800 : Colors.green.shade800);
+    String statusText = isPending
+        ? 'รอดำเนินการ'
+        : (isInProgress ? 'กำลังดำเนินการ' : 'เสร็จสิ้น');
 
     return Scaffold(
-      appBar: AppBar(title: const Text('รายละเอียดเคส')),
-      body: Container(
-        color: theme.colorScheme.surface,
+      backgroundColor: Colors.grey[50],
+      appBar: AppBar(
+        title: const Text(
+          'รายละเอียดเคส',
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
+      ),
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
-        child: FadeTransition(
-          opacity: _fade,
-          child: SlideTransition(
-            position: _slide,
-            child: ScaleTransition(
-              scale: _scale,
-              child: Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 24,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: statusColor,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      statusText,
+                      style: TextStyle(
+                        color: statusTextColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Center(child: Image.asset('assets/logo.png', height: 60)),
-                      const SizedBox(height: 24),
-                      _buildInfo('รหัสผู้ป่วย', item['patient_id']),
-                      _buildInfo('ประเภทผู้ป่วย', item['patient_type']),
-                      _buildInfo(
-                        'จุดรับ-ส่ง',
-                        '${item['room_from']} - ${item['room_to']}',
-                      ),
-                      _buildInfo('ประเภทเปล', item['stretcher_type']),
-                      _buildInfo('อุปกรณ์', item['equipments']),
-                      _buildInfo(
-                        'ผู้รับผิดชอบ',
-                        '${item['assigned_porter_fname']} ${item['assigned_porter_lname']}',
-                      ),
-                      _buildInfo(
-                        'ผู้เรียกเคส',
-                        '${item['requested_by_fname']} ${item['requested_by_lname']}',
-                      ),
-                      _buildInfo(
-                        'เวลาสร้างเคส',
-                        item['created_at'] != null
-                            ? DateTime.parse(
-                                item['created_at'],
-                              ).toLocal().toString()
-                            : '-',
-                      ),
-                      _buildInfo(
-                        'เวลาเสร็จสิ้น',
-                        item['completed_at'] != null
-                            ? DateTime.parse(
-                                item['completed_at'],
-                              ).toLocal().toString()
-                            : '-',
-                      ),
-                    ],
+                  Text(
+                    item['created_at'] != null
+                        ? timeAgo(item['created_at'])
+                        : '',
+                    style: TextStyle(color: Colors.grey[500], fontSize: 14),
                   ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              Center(
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppTheme.deepPurple.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.person,
+                        size: 48,
+                        color: AppTheme.deepPurple,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'HN ${item['patient_id'] ?? '-'}',
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    Text(
+                      'ประเภท: ${item['patient_type'] ?? '-'}',
+                      style: const TextStyle(fontSize: 16, color: Colors.grey),
+                    ),
+                  ],
                 ),
               ),
-            ),
+
+              const SizedBox(height: 32),
+              const Divider(),
+              const SizedBox(height: 16),
+
+              _buildSectionTitle('ข้อมูลการเคลื่อนย้าย'),
+              _buildInfoRow(Icons.login, 'จุดรับ', item['room_from']),
+              _buildInfoRow(Icons.logout, 'จุดส่ง', item['room_to']),
+
+              const SizedBox(height: 24),
+              _buildSectionTitle('ข้อมูลอุปกรณ์'),
+              _buildInfoRow(
+                Icons.airline_seat_flat,
+                'ประเภทเปล',
+                item['stretcher_type'] ??
+                    item['stretcher_type_name'] ??
+                    item['str_type_name'],
+              ),
+              _buildInfoRow(
+                Icons.medical_services,
+                'อุปกรณ์',
+                (item['equipments'] is List)
+                    ? (item['equipments'] as List).join(', ')
+                    : (item['equipments'] ?? item['equipment']),
+              ),
+
+              const SizedBox(height: 24),
+              _buildSectionTitle('ผู้เกี่ยวข้อง'),
+              _buildInfoRow(
+                Icons.person_outline,
+                'ผู้เรียกเคส',
+                '${item['requested_by_fname'] ?? ''} ${item['requested_by_lname'] ?? ''}',
+              ),
+
+              if (item['assigned_porter_username'] != null)
+                _buildInfoRow(
+                  Icons.assignment_ind,
+                  'เวรเปล',
+                  item['assigned_porter_username'],
+                ),
+
+              const SizedBox(height: 24),
+              if (item['created_at'] != null)
+                Text(
+                  'สร้างเมื่อ: ${DateTime.parse(item['created_at']).toLocal()}',
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildInfo(String label, dynamic value) {
+  Widget _buildSectionTitle(String title) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+          color: Colors.grey,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String? value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.circle, size: 8, color: AppTheme.deepPurple),
-          const SizedBox(width: 12),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 20, color: AppTheme.deepPurple),
+          ),
+          const SizedBox(width: 16),
           Expanded(
-            child: Text(
-              '$label: ${value ?? '-'}',
-              style: const TextStyle(
-                fontSize: 15,
-                color: Colors.black87,
-                fontWeight: FontWeight.w500,
-                height: 1.3,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                Text(
+                  value ?? '-',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
             ),
           ),
         ],

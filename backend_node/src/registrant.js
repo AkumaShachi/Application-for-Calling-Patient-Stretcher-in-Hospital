@@ -14,7 +14,7 @@ router.post('/registrant', async (req, res) => {
 
     // Lookup role case-insensitive
     const [roleResults] = await pool.query(
-      'SELECT id_R FROM roles WHERE LOWER(role_name) = LOWER(?)',
+      'SELECT role_id FROM roles WHERE LOWER(role_name) = LOWER(?)',
       [role_U]
     );
 
@@ -22,34 +22,34 @@ router.post('/registrant', async (req, res) => {
       return res.status(400).json({ status: 'error', message: 'Invalid role name' });
     }
 
-    const role_id = roleResults[0].id_R;
+    const role_id = roleResults[0].role_id;
 
-    // Insert Users
+    // Insert Users - ใช้ column names ที่ถูกต้อง
     const registrant = { 
-      id_U, 
-      fname_U, 
-      lname_U, 
-      phone_U, 
-      email_U, 
-      username, 
-      password_hash: hashedPassword, 
+      user_id: id_U, 
+      user_fname: fname_U, 
+      user_lname: lname_U, 
+      user_phone: phone_U, 
+      user_email: email_U, 
+      user_username: username, 
+      user_password_hash: hashedPassword, 
       role_id 
     };
 
     const [userResult] = await pool.query('INSERT INTO users SET ?', registrant);
-    const user_id = userResult.insertId;
+    const user_num = userResult.insertId;
 
     // Insert role-specific table
     if (role_U.toLowerCase() === 'nurse') {
       await pool.query('INSERT INTO nurses SET ?', {
-        user_id,
+        user_num,
         license_number: license_number || null,
         department: department || null,
         position: position || null
       });
     } else if (role_U.toLowerCase() === 'porter') {
       await pool.query('INSERT INTO porters SET ?', {
-        user_id,
+        user_num,
         shift: shift || null,
         area: area || null,
         position: position || null

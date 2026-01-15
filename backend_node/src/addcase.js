@@ -12,38 +12,43 @@ router.post('/add_case', async (req, res) => {
     requestedBy,
     equipmentIds
   } = req.body;
+  
+  console.log('📌 [POST] /add_case Request:', req.body);
 
   try {
-    // 1. หา user id ของ requestedBy
+    // 1. หา user_num ของ requestedBy
     const [userRows] = await pool.query(
-      'SELECT num_U FROM Users WHERE username = ?',
+      'SELECT user_num FROM users WHERE user_username = ?',
       [requestedBy]
     );
     if (userRows.length === 0) {
+      console.warn(`⚠️ User not found: ${requestedBy}`);
       return res.status(400).json({ message: 'ไม่พบผู้ใช้ requestedBy' });
     }
-    const requestedById = userRows[0].num_U;
+    const requestedById = userRows[0].user_num;
 
-    // 2. หา stretcher_type_id + เช็ค quantity
+    // 2. หา str_type_id + เช็ค quantity
     let stretcherTypeDbId = null;
     if (stretcherTypeId) {
       const [stretcherRows] = await pool.query(
-        'SELECT id, quantity FROM StretcherTypes WHERE type_name = ?',
+        'SELECT str_type_id, str_quantity FROM stretchertypes WHERE str_type_name = ?',
         [stretcherTypeId]
       );
       if (stretcherRows.length === 0) {
+        console.warn(`⚠️ Stretcher type not found: ${stretcherTypeId}`);
         return res.status(400).json({ message: 'ไม่พบประเภทเปลที่ส่งมา' });
       }
-      if (stretcherRows[0].quantity <= 0) {
+      if (stretcherRows[0].str_quantity <= 0) {
+        console.warn(`⚠️ Stretcher out of stock: ${stretcherTypeId}`);
         return res.status(400).json({ message: `หมดเปลประเภท ${stretcherTypeId}` });
       }
-      stretcherTypeDbId = stretcherRows[0].id;
+      stretcherTypeDbId = stretcherRows[0].str_type_id;
     }
 
-    // 3. Insert เคส
+    // 3. Insert เคส - ใช้ column names ที่ถูกต้อง
     const [caseResult] = await pool.query(
-      `INSERT INTO Cases
-       (patient_id, patient_type, room_from, room_to, stretcher_type_id, requested_by)
+      `INSERT INTO cases
+       (case_patient_id, case_patient_type, case_room_from, case_room_to, str_type_id, case_requested_by)
        VALUES (?, ?, ?, ?, ?, ?)`,
       [patientId, patientType, roomFrom, roomTo, stretcherTypeDbId, requestedById]
     );
@@ -52,7 +57,7 @@ router.post('/add_case', async (req, res) => {
     // 4. ลด quantity ของเปลลง 1
     if (stretcherTypeDbId) {
       await pool.query(
-        'UPDATE StretcherTypes SET quantity = quantity - 1 WHERE id = ?',
+        'UPDATE stretchertypes SET str_quantity = str_quantity - 1 WHERE str_type_id = ?',
         [stretcherTypeDbId]
       );
     }
@@ -67,27 +72,27 @@ router.post('/add_case', async (req, res) => {
     const outOfStock = [];
 
     if (equipmentArray.length > 0) {
-      // หา id + quantity ของอุปกรณ์
+      // หา eqpt_id + quantity ของอุปกรณ์
       const [equipRows] = await pool.query(
-        'SELECT id, equipment_name, quantity FROM Equipments WHERE equipment_name IN (?)',
+        'SELECT eqpt_id, eqpt_name, eqpt_quantity FROM equipments WHERE eqpt_name IN (?)',
         [equipmentArray]
       );
 
       for (const eq of equipRows) {
-        if (eq.quantity > 0) {
-          // insert เข้า CaseEquipments
+        if (eq.eqpt_quantity > 0) {
+          // insert เข้า caseequipments
           await pool.query(
-            'INSERT INTO CaseEquipments (case_id, equipment_id) VALUES (?, ?)',
-            [caseId, eq.id]
+            'INSERT INTO caseequipments (case_id, eqpt_id) VALUES (?, ?)',
+            [caseId, eq.eqpt_id]
           );
           // ลด quantity ลง 1
           await pool.query(
-            'UPDATE Equipments SET quantity = quantity - 1 WHERE id = ?',
-            [eq.id]
+            'UPDATE equipments SET eqpt_quantity = eqpt_quantity - 1 WHERE eqpt_id = ?',
+            [eq.eqpt_id]
           );
-          usedEquipment.push(eq.equipment_name);
+          usedEquipment.push(eq.eqpt_name);
         } else {
-          outOfStock.push(eq.equipment_name);
+          outOfStock.push(eq.eqpt_name);
         }
       }
     }

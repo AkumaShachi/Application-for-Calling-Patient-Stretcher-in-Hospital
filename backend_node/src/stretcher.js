@@ -7,7 +7,7 @@ const pool = require('./Database'); // MySQL pool
 // =====================
 router.get('/stretcher', async (req, res) => {
   try {
-    const [results] = await pool.query('SELECT * FROM StretcherTypes');
+    const [results] = await pool.query('SELECT str_type_id AS id, str_type_name AS type_name, str_quantity AS quantity FROM stretchertypes');
     res.json(results);
   } catch (err) {
     console.error('Database error:', err);
@@ -26,7 +26,7 @@ router.post('/add/stretcher', async (req, res) => {
 
   try {
     const [result] = await pool.query(
-      'INSERT INTO StretcherTypes (type_name, quantity) VALUES (?, ?)',
+      'INSERT INTO stretchertypes (str_type_name, str_quantity) VALUES (?, ?)',
       [type_name, quantity]
     );
 
@@ -44,7 +44,7 @@ router.put('/stretcher/:id', async (req, res) => {
 
   try {
     await pool.query(
-      'UPDATE StretcherTypes SET type_name = ?, quantity = ? WHERE id = ?',
+      'UPDATE stretchertypes SET str_type_name = ?, str_quantity = ? WHERE str_type_id = ?',
       [type_name, quantity, id]
     );
 

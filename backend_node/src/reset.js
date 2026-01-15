@@ -18,18 +18,18 @@ router.post('/send-reset-pass', async (req, res) => {
   }
 
   try {
-    // 1. หา user_id จาก email
-    const [users] = await pool.promise().query(
-      'SELECT num_U FROM users WHERE email_U = ?', 
+    // 1. หา user_num จาก email
+    const [users] = await pool.query(
+      'SELECT user_num FROM users WHERE user_email = ?', 
       [email]
     );
     if (!users.length) return res.status(404).json({ success: false, error: 'User not found' });
 
-    const user_id = users[0].num_U;
+    const user_id = users[0].user_num;
 
     // 2. หา token ล่าสุดของ user
-    const [resets] = await pool.promise().query(
-      'SELECT * FROM PasswordResets WHERE user_id = ? ORDER BY id_PR DESC LIMIT 1',
+    const [resets] = await pool.query(
+      'SELECT * FROM passwordresets WHERE user_id = ? ORDER BY id_PR DESC LIMIT 1',
       [user_id]
     );
     if (!resets.length) return res.status(400).json({ success: false, error: 'Token ไม่ถูกต้อง' });
@@ -42,7 +42,7 @@ router.post('/send-reset-pass', async (req, res) => {
 
     // 4. ตรวจสอบหมดอายุ
     if (new Date(reset.token_expiry) < new Date()) {
-      await pool.promise().query('DELETE FROM PasswordResets WHERE id_PR = ?', [reset.id_PR]);
+      await pool.query('DELETE FROM passwordresets WHERE id_PR = ?', [reset.id_PR]);
       return res.status(400).json({ success: false, error: 'Token หมดอายุ' });
     }
 
@@ -50,10 +50,10 @@ router.post('/send-reset-pass', async (req, res) => {
     const hashedPassword = await bcrypt.hash(new_password, 10);
 
     // 6. update users
-    await pool.promise().query('UPDATE users SET password_hash = ? WHERE num_U = ?', [hashedPassword, user_id]);
+    await pool.query('UPDATE users SET user_password_hash = ? WHERE user_num = ?', [hashedPassword, user_id]);
 
     // 7. ลบ token หลังใช้งาน
-    await pool.promise().query('DELETE FROM PasswordResets WHERE id_PR = ?', [reset.id_PR]);
+    await pool.query('DELETE FROM passwordresets WHERE id_PR = ?', [reset.id_PR]);
 
     res.json({ success: true, message: 'รีเซ็ตรหัสผ่านสำเร็จ' });
   } catch (err) {

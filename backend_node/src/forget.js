@@ -10,9 +10,9 @@ router.post('/send-email', async (req, res) => {
   if (!user_email) return res.status(400).json({ success: false, error: 'Missing user_email' });
 
   try {
-    const [users] = await pool.query('SELECT num_U FROM Users WHERE email_U = ?', [user_email]);
+    const [users] = await pool.query('SELECT user_num FROM users WHERE user_email = ?', [user_email]);
     if (!users.length) return res.status(404).json({ success: false, error: 'User not found' });
-    const user_id = users[0].num_U;
+    const user_id = users[0].user_num;
 
     const token = Math.floor(100000 + Math.random() * 900000).toString();
     const now = new Date();
@@ -20,8 +20,8 @@ router.post('/send-email', async (req, res) => {
 
     const hashedToken = await bcrypt.hash(token, 10);
 
-    await pool.query('DELETE FROM PasswordResets WHERE user_id = ?', [user_id]);
-    await pool.query('INSERT INTO PasswordResets (user_id, reset_token_hash, token_expiry) VALUES (?, ?, ?)',
+    await pool.query('DELETE FROM passwordresets WHERE user_id = ?', [user_id]);
+    await pool.query('INSERT INTO passwordresets (user_id, reset_token_hash, token_expiry) VALUES (?, ?, ?)',
       [user_id, hashedToken, expiry]
     );
 

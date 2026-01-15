@@ -6,17 +6,26 @@ const pool = require('./Database'); // mysql2/promise
 router.get('/cases/nurse/all', async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT c.case_id, c.patient_id, c.patient_type, c.room_from, c.room_to,
-       st.type_name AS stretcher_type, c.status, c.created_at,
-       GROUP_CONCAT(e.equipment_name SEPARATOR ', ') AS equipment,
-       u.fname_U, u.lname_U
-FROM Cases c
-       LEFT JOIN Users u ON c.requested_by = u.num_U
-       LEFT JOIN StretcherTypes st ON c.stretcher_type_id = st.id
-       LEFT JOIN CaseEquipments ce ON c.case_id = ce.case_id
-       LEFT JOIN Equipments e ON ce.equipment_id = e.id
+      `SELECT c.case_id, 
+              c.case_patient_id AS patient_id, 
+              c.case_patient_type AS patient_type, 
+              c.case_room_from AS room_from, 
+              c.case_room_to AS room_to,
+              c.str_type_id,
+              st.str_type_name AS stretcher_type, 
+              c.case_status AS status, 
+              c.case_created_at AS created_at,
+              GROUP_CONCAT(e.eqpt_name SEPARATOR ', ') AS equipment,
+              GROUP_CONCAT(e.eqpt_id SEPARATOR ',') AS equipment_ids,
+              u.user_fname AS fname_U, 
+              u.user_lname AS lname_U
+       FROM cases c
+       LEFT JOIN users u ON c.case_requested_by = u.user_num
+       LEFT JOIN stretchertypes st ON c.str_type_id = st.str_type_id
+       LEFT JOIN caseequipments ce ON c.case_id = ce.case_id
+       LEFT JOIN equipments e ON ce.eqpt_id = e.eqpt_id
        GROUP BY c.case_id
-       ORDER BY c.created_at DESC`
+       ORDER BY c.case_created_at DESC`
     );
 
     res.json(rows);
@@ -31,26 +40,33 @@ router.get('/cases/nurse/:username', async (req, res) => {
   try {
     const username = req.params.username;
     const [userRows] = await pool.query(
-      'SELECT num_U FROM Users WHERE username = ?',
+      'SELECT user_num FROM users WHERE user_username = ?',
       [username]
     );
 
     if (userRows.length === 0) return res.status(404).json({ message: 'User not found' });
-    const userId = userRows[0].num_U;
+    const userId = userRows[0].user_num;
 
     const [rows] = await pool.query(
-      `SELECT c.case_id, c.patient_id, c.patient_type, c.room_from, c.room_to,
-              st.type_name AS stretcher_type, c.status, c.created_at,
-              GROUP_CONCAT(e.equipment_name SEPARATOR ', ') AS equipment,
-              u.fname_U, u.lname_U
-       FROM Cases c
-       LEFT JOIN Users u ON c.requested_by = u.num_U
-       LEFT JOIN StretcherTypes st ON c.stretcher_type_id = st.id
-       LEFT JOIN CaseEquipments ce ON c.case_id = ce.case_id
-       LEFT JOIN Equipments e ON ce.equipment_id = e.id
-       WHERE c.requested_by = ?
+      `SELECT c.case_id, 
+              c.case_patient_id AS patient_id, 
+              c.case_patient_type AS patient_type, 
+              c.case_room_from AS room_from, 
+              c.case_room_to AS room_to,
+              st.str_type_name AS stretcher_type, 
+              c.case_status AS status, 
+              c.case_created_at AS created_at,
+              GROUP_CONCAT(e.eqpt_name SEPARATOR ', ') AS equipment,
+              u.user_fname AS fname_U, 
+              u.user_lname AS lname_U
+       FROM cases c
+       LEFT JOIN users u ON c.case_requested_by = u.user_num
+       LEFT JOIN stretchertypes st ON c.str_type_id = st.str_type_id
+       LEFT JOIN caseequipments ce ON c.case_id = ce.case_id
+       LEFT JOIN equipments e ON ce.eqpt_id = e.eqpt_id
+       WHERE c.case_requested_by = ?
        GROUP BY c.case_id
-       ORDER BY c.created_at DESC`,
+       ORDER BY c.case_created_at DESC`,
       [userId]
     );
 
@@ -66,10 +82,20 @@ router.get('/cases/nurse/:username', async (req, res) => {
 router.get('/cases/porter/all', async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT c.*, u.fname_U, u.lname_U
-       FROM Cases c
-       LEFT JOIN Users u ON c.requested_by = u.num_U
-       ORDER BY c.created_at DESC`
+      `SELECT c.case_id, 
+              c.case_patient_id AS patient_id, 
+              c.case_patient_type AS patient_type, 
+              c.case_room_from AS room_from, 
+              c.case_room_to AS room_to,
+              st.str_type_name AS stretcher_type, 
+              c.case_status AS status, 
+              c.case_created_at AS created_at,
+              u.user_fname AS fname_U, 
+              u.user_lname AS lname_U
+       FROM cases c
+       LEFT JOIN users u ON c.case_requested_by = u.user_num
+       LEFT JOIN stretchertypes st ON c.str_type_id = st.str_type_id
+       ORDER BY c.case_created_at DESC`
     );
 
     res.json(rows);
@@ -80,52 +106,51 @@ router.get('/cases/porter/all', async (req, res) => {
 });
 
 // ดึงเคสของ porter ตาม username (assigned_porter)
-// ดึงเคสของ porter ตาม username (assigned_porter)
 router.get('/cases/porter/:username', async (req, res) => {
   const { username } = req.params;
 
   try {
-    // หา num_U ของ porter
+    // หา user_num ของ porter
     const [userRows] = await pool.query(
-      'SELECT num_U FROM Users WHERE username = ?',
+      'SELECT user_num FROM users WHERE user_username = ?',
       [username]
     );
 
     if (userRows.length === 0) {
       return res.status(404).json({ message: 'User not found' });
     }
-    const num_U = userRows[0].num_U;
+    const user_num = userRows[0].user_num;
 
     // ดึงเคสทั้งหมดของ porter พร้อมข้อมูลครบถ้วน
     const [cases] = await pool.query(
       `SELECT 
           c.case_id,
-          c.patient_id,
-          c.patient_type,
-          c.room_from,
-          c.room_to,
-          st.type_name AS stretcher_type,
-          c.status,
-          c.created_at,
-          c.completed_at,
-          c.notes,
-          u_requester.username AS requested_by_username,
-          u_requester.fname_U AS requested_by_fname,
-          u_requester.lname_U AS requested_by_lname,
-          u_porter.username AS assigned_porter_username,
-          u_porter.fname_U AS assigned_porter_fname,
-          u_porter.lname_U AS assigned_porter_lname,
-          GROUP_CONCAT(e.equipment_name SEPARATOR ', ') AS equipments
-       FROM Cases c
-       LEFT JOIN Users u_requester ON c.requested_by = u_requester.num_U
-       LEFT JOIN Users u_porter ON c.assigned_porter = u_porter.num_U
-       LEFT JOIN StretcherTypes st ON c.stretcher_type_id = st.id
-       LEFT JOIN CaseEquipments ce ON c.case_id = ce.case_id
-       LEFT JOIN Equipments e ON ce.equipment_id = e.id
-       WHERE c.assigned_porter = ? OR c.status = 'pending'
+          c.case_patient_id AS patient_id,
+          c.case_patient_type AS patient_type,
+          c.case_room_from AS room_from,
+          c.case_room_to AS room_to,
+          st.str_type_name AS stretcher_type,
+          c.case_status AS status,
+          c.case_created_at AS created_at,
+          c.case_completed_at AS completed_at,
+          c.case_notes AS notes,
+          u_requester.user_username AS requested_by_username,
+          u_requester.user_fname AS requested_by_fname,
+          u_requester.user_lname AS requested_by_lname,
+          u_porter.user_username AS assigned_porter_username,
+          u_porter.user_fname AS assigned_porter_fname,
+          u_porter.user_lname AS assigned_porter_lname,
+          GROUP_CONCAT(e.eqpt_name SEPARATOR ', ') AS equipments
+       FROM cases c
+       LEFT JOIN users u_requester ON c.case_requested_by = u_requester.user_num
+       LEFT JOIN users u_porter ON c.case_assigned_porter = u_porter.user_num
+       LEFT JOIN stretchertypes st ON c.str_type_id = st.str_type_id
+       LEFT JOIN caseequipments ce ON c.case_id = ce.case_id
+       LEFT JOIN equipments e ON ce.eqpt_id = e.eqpt_id
+       WHERE c.case_assigned_porter = ? OR c.case_status = 'pending'
        GROUP BY c.case_id
-       ORDER BY c.created_at DESC`,
-      [num_U]
+       ORDER BY c.case_created_at DESC`,
+      [user_num]
     );
 
     res.json(cases);

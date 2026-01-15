@@ -16,6 +16,7 @@ const updatecaseRouter = require('./src/updatecase');
 const stretcherRouter = require('./src/stretcher');
 const equipmentsRouter = require('./src/equipments');
 const RecordHistoryRouter = require('./src/recordhistory');
+const adminRouter = require('./src/admin');
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -38,6 +39,7 @@ app.use(updatecaseRouter);
 app.use(stretcherRouter);
 app.use(equipmentsRouter);
 app.use(RecordHistoryRouter);
+app.use(adminRouter);
 
 
 // const PORT = process.env.PORT || 4000;

@@ -146,12 +146,6 @@ class _NurseExCaseScreenState extends State<NurseExCaseScreen>
                             onPressed: () {
                               Navigator.pop(context);
                               _saveCase();
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const NurseListCaseScreen(),
-                                ),
-                              );
                             },
                             style: ElevatedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 14),
@@ -201,10 +195,22 @@ class _NurseExCaseScreenState extends State<NurseExCaseScreen>
       'requestedBy': id,
       'equipmentIds': widget.equipments,
     };
-    await AddcaseFunction.saveCase(caseData);
-    if (mounted) {
+    final success = await AddcaseFunction.saveCase(caseData);
+    if (!mounted) return;
+
+    if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('บันทึกข้อมูลเคสเรียบร้อยแล้ว')),
+      );
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const NurseListCaseScreen()),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง'),
+        ),
       );
     }
   }
@@ -220,15 +226,6 @@ class _NurseExCaseScreenState extends State<NurseExCaseScreen>
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: Colors.black87,
-        actions: [
-          TextButton(
-            onPressed: _confirmAndSave,
-            child: const Text(
-              'บันทึก',
-              style: TextStyle(color: AppTheme.deepPurple),
-            ),
-          ),
-        ],
       ),
       body: Stack(
         children: [
@@ -247,7 +244,7 @@ class _NurseExCaseScreenState extends State<NurseExCaseScreen>
             child: SlideTransition(
               position: _slide,
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
                 child: _GlassCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -256,52 +253,90 @@ class _NurseExCaseScreenState extends State<NurseExCaseScreen>
                         padding: const EdgeInsets.all(16),
                         margin: const EdgeInsets.only(bottom: 16),
                         decoration: BoxDecoration(
-                          color: Colors.grey[100],
+                          color: Colors.orange.shade50,
                           borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.orange.shade200),
                         ),
-                        child: const Text(
-                          'ข้อควรระวัง: กรุณาตรวจสอบความถูกต้องและความครบถ้วนของข้อมูลก่อนบันทึก เนื่องจากไม่สามารถแก้ไขได้ภายหลัง',
-                          style: TextStyle(fontSize: 14),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.warning_amber_rounded,
+                              color: Colors.orange.shade700,
+                            ),
+                            const SizedBox(width: 12),
+                            const Expanded(
+                              child: Text(
+                                'กรุณาตรวจสอบความถูกต้องของข้อมูลก่อนบันทึก',
+                                style: TextStyle(fontSize: 14),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       Row(
                         children: [
-                          const Icon(
-                            Icons.medical_services,
-                            color: AppTheme.deepPurple,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            widget.nurseName.isEmpty
-                                ? 'พยาบาล'
-                                : widget.nurseName,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppTheme.deepPurple.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
                             ),
+                            child: const Icon(
+                              Icons.medical_services,
+                              color: AppTheme.deepPurple,
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'ผู้บันทึก',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                              Text(
+                                widget.nurseName.isEmpty
+                                    ? 'พยาบาล'
+                                    : widget.nurseName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                      const Divider(height: 24, color: Colors.black26),
+                      const Divider(height: 32, color: Colors.black12),
                       _caseItem(
                         Icons.badge,
-                        'หมายเลขผู้ป่วย : ${widget.patientId}',
+                        'หมายเลขผู้ป่วย',
+                        widget.patientId,
                       ),
                       _caseItem(
                         Icons.person,
-                        'ประเภทผู้ป่วย : ${widget.patientType}',
+                        'ประเภทผู้ป่วย',
+                        widget.patientType,
                       ),
                       _caseItem(
                         Icons.location_on,
-                        'จุดรับ-ส่ง : ${widget.receivePoint} - ${widget.sendPoint}',
+                        'จุดรับ',
+                        widget.receivePoint,
+                      ),
+                      _caseItem(Icons.flag, 'จุดส่ง', widget.sendPoint),
+                      _caseItem(
+                        Icons.airline_seat_flat,
+                        'ประเภทเปล',
+                        widget.stretcherType,
                       ),
                       _caseItem(
-                        Icons.bed,
-                        'ประเภทเปล : ${widget.stretcherType}',
-                      ),
-                      _caseItem(
-                        Icons.list,
-                        'อุปกรณ์เสริม : ${widget.equipments}',
+                        Icons.medical_services_outlined,
+                        'อุปกรณ์เสริม',
+                        widget.equipments.isEmpty ? '-' : widget.equipments,
                       ),
                     ],
                   ),
@@ -311,17 +346,105 @@ class _NurseExCaseScreenState extends State<NurseExCaseScreen>
           ),
         ],
       ),
+      // ปุ่มบันทึกตรงกลางด้านล่าง
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 20,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: InkWell(
+            onTap: _confirmAndSave,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 18),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [AppTheme.deepPurple, AppTheme.purple],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.deepPurple.withOpacity(0.4),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.save_rounded,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'บันทึกเคส',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
-  Widget _caseItem(IconData icon, String text) {
+  Widget _caseItem(IconData icon, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: AppTheme.deepPurple, size: 20),
-          const SizedBox(width: 8),
-          Expanded(child: Text(text, style: const TextStyle(fontSize: 15))),
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: AppTheme.lavender.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: AppTheme.deepPurple, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

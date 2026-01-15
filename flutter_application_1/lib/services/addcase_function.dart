@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 class AddcaseFunction {
   static final baseUrl = dotenv.env['BASE_URL'];
 
-  static Future<void> saveCase(Map<String, dynamic> caseData) async {
+  static Future<bool> saveCase(Map<String, dynamic> caseData) async {
     final url = Uri.parse('$baseUrl/add_case');
     print('Request body: ${jsonEncode(caseData)}');
 
@@ -19,11 +19,14 @@ class AddcaseFunction {
 
       if (response.statusCode == 200) {
         print('Case saved successfully');
+        return true;
       } else {
-        print('Failed to save case: ${response.statusCode}');
+        print('Failed to save case: ${response.statusCode} - ${response.body}');
+        return false;
       }
     } catch (e) {
       print('Error saving case: $e');
+      return false;
     }
   }
 }

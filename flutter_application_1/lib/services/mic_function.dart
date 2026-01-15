@@ -61,6 +61,13 @@ class MicController {
           },
           listenMode: stt.ListenMode.dictation,
           cancelOnError: true,
+          // จำกัดเวลาฟังสูงสุด 30 วินาที เพื่อป้องกันแอปค้าง
+          listenFor: const Duration(seconds: 30),
+          // หยุดฟังอัตโนมัติหลังไม่มีเสียง 3 วินาที
+          pauseFor: const Duration(seconds: 3),
+          onSoundLevelChange: (level) {
+            // Optional: สามารถใช้แสดง audio level indicator
+          },
         );
       } catch (e) {
         print("❌ Speech listen error: $e");

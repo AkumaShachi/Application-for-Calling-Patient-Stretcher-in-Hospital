@@ -11,8 +11,8 @@ router.post('/login', async (req, res) => {
     const [rows] = await pool.query(
       `SELECT u.*, r.role_name 
        FROM users u 
-       JOIN roles r ON u.role_id = r.id_R 
-       WHERE u.username = ?`,
+       JOIN roles r ON u.role_id = r.role_id 
+       WHERE u.user_username = ?`,
       [username]
     );
 
@@ -21,7 +21,7 @@ router.post('/login', async (req, res) => {
     }
 
     const user = rows[0];
-    const match = await bcrypt.compare(password, user.password_hash);
+    const match = await bcrypt.compare(password, user.user_password_hash);
 
     if (!match) {
       return res.status(401).json({ status: 'error', message: 'Invalid username or password' });
@@ -40,9 +40,9 @@ router.get('/user/:username', async (req, res) => {
 
   try {
     const [results] = await pool.query(
-      `SELECT fname_U, lname_U, email_U, phone_U, profile_image
-       FROM Users
-       WHERE username = ?
+      `SELECT user_fname AS fname_U, user_lname AS lname_U, user_email AS email_U, user_phone AS phone_U, user_profile_image AS profile_image
+       FROM users
+       WHERE user_username = ?
        LIMIT 1`,
       [username]
     );

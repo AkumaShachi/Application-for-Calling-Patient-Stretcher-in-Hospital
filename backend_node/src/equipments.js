@@ -7,7 +7,7 @@ const pool = require('./Database'); // mysql2/promise
 // =====================
 router.get('/equipments', async (req, res) => {
   try {
-    const [results] = await pool.query('SELECT * FROM Equipments');
+    const [results] = await pool.query('SELECT eqpt_id AS id, eqpt_name AS equipment_name, eqpt_quantity AS quantity FROM equipments');
     res.json(results);
   } catch (err) {
     console.error(err);
@@ -26,8 +26,8 @@ router.post('/add/equipments', async (req, res) => {
   }
 
   try {
-    await pool.query('INSERT INTO Equipments (equipment_name, quantity) VALUES (?, ?)', [equipment_name, quantity]);
-    const [results] = await pool.query('SELECT * FROM Equipments');
+    await pool.query('INSERT INTO equipments (eqpt_name, eqpt_quantity) VALUES (?, ?)', [equipment_name, quantity]);
+    const [results] = await pool.query('SELECT eqpt_id AS id, eqpt_name AS equipment_name, eqpt_quantity AS quantity FROM equipments');
     res.json({ message: 'Equipment added', equipments: results });
   } catch (err) {
     console.error(err);
@@ -44,8 +44,8 @@ router.put('/equipments/:id', async (req, res) => {
   const { equipment_name, quantity } = req.body;
 
   try {
-    await pool.query('UPDATE Equipments SET equipment_name = ?, quantity = ? WHERE id = ?', [equipment_name, quantity, id]);
-    const [results] = await pool.query('SELECT * FROM Equipments');
+    await pool.query('UPDATE equipments SET eqpt_name = ?, eqpt_quantity = ? WHERE eqpt_id = ?', [equipment_name, quantity, id]);
+    const [results] = await pool.query('SELECT eqpt_id AS id, eqpt_name AS equipment_name, eqpt_quantity AS quantity FROM equipments');
     res.json({ message: 'Equipment updated', equipments: results });
   } catch (err) {
     console.error(err);
@@ -61,8 +61,8 @@ router.delete('/equipments/:id', async (req, res) => {
   const { id } = req.params;
 
   try {
-    await pool.query('DELETE FROM Equipments WHERE id = ?', [id]);
-    const [results] = await pool.query('SELECT * FROM Equipments');
+    await pool.query('DELETE FROM equipments WHERE eqpt_id = ?', [id]);
+    const [results] = await pool.query('SELECT eqpt_id AS id, eqpt_name AS equipment_name, eqpt_quantity AS quantity FROM equipments');
     res.json({ message: 'Equipment deleted', equipments: results });
   } catch (err) {
     console.error(err);

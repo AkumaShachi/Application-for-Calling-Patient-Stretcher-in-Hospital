@@ -19,15 +19,15 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // =====================
-// GET /user/:username
-// ดึงข้อมูลผู้ใช้
+// GET /edituser/:username
+// ดึงข้อมูลผู้ใช้สำหรับแก้ไข
 // =====================
-router.get('/user/:username', async (req, res) => {
+router.get('/edituser/:username', async (req, res) => {
   const { username } = req.params;
 
   try {
     const [results] = await pool.query(
-      'SELECT fname_U, lname_U, email_U, phone_U, profile_image FROM Users WHERE username = ? LIMIT 1',
+      'SELECT user_fname AS fname_U, user_lname AS lname_U, user_email AS email_U, user_phone AS phone_U, user_profile_image AS profile_image FROM users WHERE user_username = ? LIMIT 1',
       [username]
     );
 
@@ -68,9 +68,9 @@ router.put('/user/:username', upload.single('profile_image'), async (req, res) =
 
   try {
     const [result] = await pool.query(
-      `UPDATE Users
-       SET fname_U = ?, lname_U = ?, email_U = ?, phone_U = ?, profile_image = COALESCE(?, profile_image)
-       WHERE username = ?`,
+      `UPDATE users
+       SET user_fname = ?, user_lname = ?, user_email = ?, user_phone = ?, user_profile_image = COALESCE(?, user_profile_image)
+       WHERE user_username = ?`,
       [fname_U, lname_U, email_U, phone_U, profile_image, username]
     );
 
@@ -79,7 +79,7 @@ router.put('/user/:username', upload.single('profile_image'), async (req, res) =
     }
 
     const [updated] = await pool.query(
-      'SELECT fname_U, lname_U, email_U, phone_U, profile_image FROM Users WHERE username = ? LIMIT 1',
+      'SELECT user_fname AS fname_U, user_lname AS lname_U, user_email AS email_U, user_phone AS phone_U, user_profile_image AS profile_image FROM users WHERE user_username = ? LIMIT 1',
       [username]
     );
 

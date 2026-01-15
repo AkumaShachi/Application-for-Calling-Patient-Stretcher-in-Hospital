@@ -32,6 +32,7 @@ class _NurseListCaseScreenState extends State<NurseListCaseScreen>
   List<Map<String, dynamic>> myCases = [];
   bool loadingAll = true;
   bool loadingMy = true;
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -39,12 +40,14 @@ class _NurseListCaseScreenState extends State<NurseListCaseScreen>
     _tabController = TabController(length: 2, vsync: this);
     _fadeCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 500),
     );
+    _fadeCtrl.forward();
     _loadUserInfo();
     _fetchCases();
-    _timer = Timer.periodic(const Duration(seconds: 5), (_) => _fetchCases());
-    Future.delayed(const Duration(milliseconds: 300), _fadeCtrl.forward);
+    _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      _fetchCases();
+    });
   }
 
   @override
@@ -101,34 +104,29 @@ class _NurseListCaseScreenState extends State<NurseListCaseScreen>
     return equipment.toString();
   }
 
+  List<Map<String, dynamic>> _filterCases(List<Map<String, dynamic>> cases) {
+    if (_searchQuery.isEmpty) return cases;
+    return cases.where((item) {
+      final patientId = (item['patient_id'] ?? '').toString().toLowerCase();
+      final query = _searchQuery.toLowerCase();
+      // ค้นหาจากหมายเลขผู้ป่วย
+      return patientId.contains(query);
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      onWillPop: () async {
-        // ❌ ปิดการกดปุ่มย้อนกลับ
-        return false;
-      },
+      onWillPop: () async => false,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text("บันทึกเคสผู้ป่วย"),
-          automaticallyImplyLeading: false,
-          bottom: TabBar(
-            controller: _tabController,
-            tabs: const [
-              Tab(text: 'เคสทั้งหมด'),
-              Tab(text: 'เคสของฉัน'),
-            ],
-          ),
-        ),
-        endDrawer: _buildDrawer(context),
         body: Stack(
           children: [
-            // ----- Gradient background + blur -----
+            // ----- Gradient background -----
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  begin: Alignment(-1, -1),
-                  end: Alignment(1, 1),
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                   colors: [
                     Theme.of(context).scaffoldBackgroundColor,
                     AppTheme.lavender,
@@ -138,59 +136,227 @@ class _NurseListCaseScreenState extends State<NurseListCaseScreen>
             ),
 
             // ----- Content -----
-            FadeTransition(
-              opacity: _fadeCtrl,
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: TextField(
-                      decoration: InputDecoration(
-                        hintText: 'ค้นหาเคสผู้ป่วย',
-                        prefixIcon: const Icon(Icons.search),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+            SafeArea(
+              child: FadeTransition(
+                opacity: _fadeCtrl,
+                child: Column(
+                  children: [
+                    // Header with title
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 8, 0),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'บันทึกเคสผู้ป่วย',
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.deepPurple,
+                                  ),
+                                ),
+                                Text(
+                                  'จำนวน ${allCases.length} เคส',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Builder(
+                            builder: (context) => IconButton(
+                              icon: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.deepPurple.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  Icons.menu,
+                                  color: AppTheme.deepPurple,
+                                ),
+                              ),
+                              onPressed: () =>
+                                  Scaffold.of(context).openEndDrawer(),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Search bar
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: TextField(
+                          onChanged: (value) {
+                            setState(() {
+                              _searchQuery = value;
+                            });
+                          },
+                          decoration: InputDecoration(
+                            hintText: 'ค้นหาด้วยหมายเลขผู้ป่วย...',
+                            hintStyle: TextStyle(color: Colors.grey.shade400),
+                            prefixIcon: Icon(
+                              Icons.search,
+                              color: AppTheme.deepPurple,
+                            ),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 16,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  Expanded(
-                    child: TabBarView(
-                      controller: _tabController,
-                      children: [
-                        loadingAll
-                            ? const Center(child: CircularProgressIndicator())
-                            : CaseListView(
-                                cases: allCases,
-                                timeFormatter: timeAgo,
-                                formatEquipment: formatEquipment,
-                              ),
-                        loadingMy
-                            ? const Center(child: CircularProgressIndicator())
-                            : CaseListView(
-                                cases: myCases,
-                                timeFormatter: timeAgo,
-                                formatEquipment: formatEquipment,
-                              ),
-                      ],
+
+                    // Tab bar
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: TabBar(
+                        controller: _tabController,
+                        indicator: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          color: AppTheme.deepPurple,
+                        ),
+                        indicatorSize: TabBarIndicatorSize.tab,
+                        indicatorPadding: const EdgeInsets.all(4),
+                        labelColor: Colors.white,
+                        unselectedLabelColor: Colors.grey.shade600,
+                        labelStyle: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                        ),
+                        tabs: [
+                          Tab(
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.list_alt, size: 18),
+                                const SizedBox(width: 8),
+                                const Text('เคสทั้งหมด'),
+                              ],
+                            ),
+                          ),
+                          Tab(
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.person, size: 18),
+                                const SizedBox(width: 8),
+                                const Text('เคสของฉัน'),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 8),
+
+                    // Tab view content
+                    Expanded(
+                      child: TabBarView(
+                        controller: _tabController,
+                        children: [
+                          loadingAll
+                              ? const Center(child: CircularProgressIndicator())
+                              : _filterCases(allCases).isEmpty
+                              ? _buildEmptyState('ไม่พบเคสที่ค้นหา')
+                              : CaseListView(
+                                  cases: _filterCases(allCases),
+                                  timeFormatter: timeAgo,
+                                  formatEquipment: formatEquipment,
+                                ),
+                          loadingMy
+                              ? const Center(child: CircularProgressIndicator())
+                              : _filterCases(myCases).isEmpty
+                              ? _buildEmptyState('ไม่พบเคสที่ค้นหา')
+                              : CaseListView(
+                                  cases: _filterCases(myCases),
+                                  timeFormatter: timeAgo,
+                                  formatEquipment: formatEquipment,
+                                ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
         ),
-        floatingActionButton: FloatingActionButton(
-          backgroundColor: AppTheme.deepPurple,
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const NurseAddCaseScreen()),
-            );
-          },
-          child: const Icon(Icons.mic, color: Colors.white),
+        // ... rest of the file ...
+        endDrawer: _buildDrawer(context),
+        floatingActionButton: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppTheme.deepPurple, AppTheme.purple],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.deepPurple.withOpacity(0.4),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: FloatingActionButton(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NurseAddCaseScreen()),
+              );
+            },
+            child: const Icon(Icons.mic, color: Colors.white, size: 28),
+          ),
         ),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(String message) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.inbox_outlined, size: 80, color: Colors.grey.shade300),
+          const SizedBox(height: 16),
+          Text(
+            message,
+            style: TextStyle(fontSize: 18, color: Colors.grey.shade500),
+          ),
+        ],
       ),
     );
   }
@@ -289,93 +455,248 @@ class CaseListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
       itemCount: cases.length,
       itemBuilder: (context, index) {
         final item = cases[index];
-        return _GlassCard(
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        final timeText = timeFormatter(item["created_at"] ?? '');
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              // Header with gradient
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppTheme.deepPurple.withOpacity(0.1),
+                      AppTheme.lavender.withOpacity(0.3),
+                    ],
+                  ),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(20),
+                    topRight: Radius.circular(20),
+                  ),
+                ),
+                child: Row(
                   children: [
-                    Text(
-                      '${item["fname_U"]} ${item["lname_U"]}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppTheme.deepPurple,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.person,
+                        color: Colors.white,
+                        size: 20,
                       ),
                     ),
-                    Text(
-                      timeFormatter(item["created_at"] ?? ''),
-                      style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${item["fname_U"] ?? ""} ${item["lname_U"] ?? ""}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Text(
+                              '${item['patient_id'] ?? '-'}',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.deepPurple,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.access_time,
+                            size: 14,
+                            color: Colors.grey.shade600,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            timeText,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                _info(
-                  Icons.confirmation_number,
-                  "หมายเลขผู้ป่วย: ${item['patient_id'] ?? ''}",
+              ),
+
+              // Content
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    _infoRow(
+                      Icons.category,
+                      'ประเภทผู้ป่วย',
+                      item['patient_type'] ?? '-',
+                      Colors.blue,
+                    ),
+                    const SizedBox(height: 12),
+                    _infoRow(
+                      Icons.location_on,
+                      'จุดรับ → จุดส่ง',
+                      '${item['room_from'] ?? '-'}\n→ ${item['room_to'] ?? '-'}',
+                      Colors.orange,
+                    ),
+                    const SizedBox(height: 12),
+                    _infoBadge(
+                      Icons.airline_seat_flat,
+                      'ประเภทเปล',
+                      item['stretcher_type'] ?? '-',
+                      AppTheme.deepPurple,
+                    ),
+                    const SizedBox(height: 12),
+                    _infoBadge(
+                      Icons.medical_services_outlined,
+                      'อุปกรณ์',
+                      formatEquipment(item['equipment']),
+                      Colors.teal,
+                    ),
+                  ],
                 ),
-                _info(
-                  Icons.person,
-                  "ประเภทผู้ป่วย: ${item['patient_type'] ?? ''}",
-                ),
-                _info(
-                  Icons.place,
-                  "จุดรับ-ส่ง: ${item['room_from'] ?? ''} → ${item['room_to'] ?? ''}",
-                ),
-                _info(
-                  Icons.airline_seat_flat,
-                  "ประเภทเปล: ${item['stretcher_type'] ?? ''}",
-                ),
-                _info(
-                  Icons.medical_services,
-                  "อุปกรณ์: ${formatEquipment(item['equipment'])}",
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },
     );
   }
 
-  Widget _info(IconData icon, String text) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 2),
-    child: Row(
+  Widget _infoRow(IconData icon, String label, String value, Color color) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 18, color: AppTheme.deepPurple),
-        const SizedBox(width: 6),
-        Expanded(child: Text(text)),
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, size: 18, color: color),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
       ],
-    ),
-  );
-}
+    );
+  }
 
-class _GlassCard extends StatelessWidget {
-  final Widget child;
-  const _GlassCard({required this.child});
-  @override
-  Widget build(BuildContext context) {
+  Widget _infoBadge(IconData icon, String label, String value, Color color) {
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        color: Colors.white.withOpacity(0.65),
-        border: Border.all(color: Colors.white.withOpacity(0.6)),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.deepPurple.withOpacity(0.1),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
-      child: child,
     );
   }
 }

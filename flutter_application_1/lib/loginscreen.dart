@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'nurses_screen/nurse_list_case.dart';
 import 'porters_screen/porter_list_case.dart';
+import 'admin_screen/admin_list_case.dart';
 import 'registerscreen.dart';
 
 import 'design/theme.dart';
@@ -139,6 +140,11 @@ class _LoginScreenState extends State<LoginScreen>
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const PorterCaseListScreen()),
+        );
+      } else if (role == 'admin') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const AdminListCaseScreen()),
         );
       } else {
         _showMsg('บทบาทผู้ใช้ไม่ถูกต้อง');
