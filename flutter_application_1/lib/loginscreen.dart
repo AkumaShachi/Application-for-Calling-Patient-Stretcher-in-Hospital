@@ -7,8 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'nurses_screen/nurse_list_case.dart';
 import 'porters_screen/porter_list_case.dart';
-import 'admin_screen/admin_list_case.dart';
-import 'registerscreen.dart';
+import 'admin_screen/admin_main_screen.dart';
 
 import 'design/theme.dart';
 
@@ -144,7 +143,7 @@ class _LoginScreenState extends State<LoginScreen>
       } else if (role == 'admin') {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const AdminListCaseScreen()),
+          MaterialPageRoute(builder: (context) => const AdminMainScreen()),
         );
       } else {
         _showMsg('บทบาทผู้ใช้ไม่ถูกต้อง');
@@ -324,30 +323,7 @@ class _LoginScreenState extends State<LoginScreen>
                           },
                         ),
                         const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              'ยังไม่มีบัญชี? ',
-                              style: theme.textTheme.bodyMedium,
-                            ),
-                            GestureDetector(
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const RegisterScreen(),
-                                ),
-                              ),
-                              child: const Text(
-                                'ลงทะเบียน',
-                                style: TextStyle(
-                                  color: AppTheme.deepPurple,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                        const SizedBox(height: 8),
                         const SizedBox(height: 8),
                       ],
                     ),

@@ -55,4 +55,19 @@ router.put('/stretcher/:id', async (req, res) => {
   }
 });
 
+// =====================
+// ลบประเภทเปล (DELETE)
+// =====================
+router.delete('/stretcher/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    await pool.query('DELETE FROM stretchertypes WHERE str_type_id = ?', [id]);
+    res.json({ success: true, message: 'Stretcher deleted' });
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 module.exports = router;

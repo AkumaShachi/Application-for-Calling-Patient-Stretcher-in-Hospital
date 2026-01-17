@@ -23,9 +23,7 @@ class NurseAddCaseScreen extends StatefulWidget {
 class _NurseAddCaseScreenState extends State<NurseAddCaseScreen>
     with TickerProviderStateMixin {
   // Controllers
-  final TextEditingController patientIdController = TextEditingController(
-    text: 'HN',
-  );
+  final TextEditingController patientIdController = TextEditingController();
   final TextEditingController patientTypeController = TextEditingController();
   final TextEditingController receivePointController = TextEditingController();
   final TextEditingController sendPointController = TextEditingController();
@@ -115,6 +113,67 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen>
     );
   }
 
+  /// แปลงข้อความจากเสียงพูดเป็นหมายเลขผู้ป่วย (HN/AN/XN/DN + ตัวเลข)
+  String _parsePatientId(String input) {
+    final text = input.toUpperCase().replaceAll(' ', '');
+
+    // รายการ prefix ที่อนุญาต
+    const validPrefixes = ['HN', 'AN', 'XN', 'DN'];
+
+    // Mapping คำพูดภาษาไทยเป็น prefix
+    final thaiMappings = {
+      'เอชเอ็น': 'HN',
+      'เอชเอน': 'HN',
+      'เฮชเอ็น': 'HN',
+      'เฮชเอน': 'HN',
+      'ฮอสปิตอล': 'HN',
+      'โฮสปิตอล': 'HN',
+      'เอเอ็น': 'AN',
+      'เอเอน': 'AN',
+      'แอดมิต': 'AN',
+      'เอ็กซ์เอ็น': 'XN',
+      'เอ็กซ์เอน': 'XN',
+      'เอ๊กซ์': 'XN',
+      'ดีเอ็น': 'DN',
+      'ดีเอน': 'DN',
+      'ดิสชาร์จ': 'DN',
+    };
+
+    String prefix = '';
+    String numbers = '';
+
+    // ลองหา prefix จาก input โดยตรง
+    for (final p in validPrefixes) {
+      if (text.startsWith(p)) {
+        prefix = p;
+        numbers = text.substring(p.length).replaceAll(RegExp(r'[^0-9]'), '');
+        break;
+      }
+    }
+
+    // ถ้าไม่เจอ ลองหาจาก mapping ภาษาไทย
+    if (prefix.isEmpty) {
+      final lowerInput = input.toLowerCase().replaceAll(' ', '');
+      for (final entry in thaiMappings.entries) {
+        if (lowerInput.contains(entry.key.toLowerCase())) {
+          prefix = entry.value;
+          // ดึงตัวเลขจาก input
+          numbers = text.replaceAll(RegExp(r'[^0-9]'), '');
+          break;
+        }
+      }
+    }
+
+    // ถ้ายังไม่เจอ prefix ให้ใช้ HN เป็น default
+    if (prefix.isEmpty) {
+      prefix = 'HN';
+      numbers = text.replaceAll(RegExp(r'[^0-9]'), '');
+    }
+
+    // รวม prefix + ตัวเลข
+    return '$prefix$numbers';
+  }
+
   /// แปลงข้อความจากเสียงพูดเป็นประเภทผู้ป่วย (GE/ER/CV/WC/STR/ISO + ตัวเลข)
   String _parsePatientType(String input) {
     final text = input.toUpperCase().replaceAll(' ', '');
@@ -200,6 +259,7 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
+                        const SizedBox(height: 40), // เว้นที่ให้ปุ่มย้อนกลับ
                         ShaderMask(
                           shaderCallback: (rect) => const LinearGradient(
                             colors: [AppTheme.deepPurple, AppTheme.purple],
@@ -300,15 +360,11 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen>
                                       micController.recognizedText.isNotEmpty) {
                                     switch (editingField) {
                                       case 'หมายเลขผู้ป่วย':
-                                        // ดึงเฉพาะตัวเลข + เพิ่ม HN นำหน้า
-                                        final numbersOnly = micController
-                                            .recognizedText
-                                            .replaceAll(
-                                              RegExp(r'[^0-9]'),
-                                              '',
-                                            ); // เอาแค่ตัวเลข
+                                        // แปลงคำพูดเป็น prefix (HN/AN/XN/DN) + ตัวเลข
                                         patientIdController.text =
-                                            'HN$numbersOnly';
+                                            _parsePatientId(
+                                              micController.recognizedText,
+                                            );
                                         break;
                                       case 'ประเภทผู้ป่วย':
                                         // แปลงคำพูดเป็น prefix (GE/ER/CV/WC/STR/ISO) + ตัวเลข
@@ -355,15 +411,11 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen>
                                       micController.recognizedText.isNotEmpty) {
                                     switch (editingField) {
                                       case 'หมายเลขผู้ป่วย':
-                                        // ดึงเฉพาะตัวเลข + เพิ่ม HN นำหน้า
-                                        final numbersOnly2 = micController
-                                            .recognizedText
-                                            .replaceAll(
-                                              RegExp(r'[^0-9]'),
-                                              '',
-                                            ); // เอาแค่ตัวเลข
+                                        // แปลงคำพูดเป็น prefix (HN/AN/XN/DN) + ตัวเลข
                                         patientIdController.text =
-                                            'HN$numbersOnly2';
+                                            _parsePatientId(
+                                              micController.recognizedText,
+                                            );
                                         break;
                                       case 'ประเภทผู้ป่วย':
                                         // แปลงคำพูดเป็น prefix (GE/ER/CV/WC/STR/ISO) + ตัวเลข
@@ -434,6 +486,33 @@ class _NurseAddCaseScreenState extends State<NurseAddCaseScreen>
                       ],
                     ),
                   ),
+                ),
+              ),
+            ),
+          ),
+          // ปุ่มย้อนกลับ (วางหลัง SafeArea เพื่อให้อยู่บนสุด)
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            left: 8,
+            child: GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.15),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.arrow_back_rounded,
+                  color: AppTheme.deepPurple,
+                  size: 24,
                 ),
               ),
             ),

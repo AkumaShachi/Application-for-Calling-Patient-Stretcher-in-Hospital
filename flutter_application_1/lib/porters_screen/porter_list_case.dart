@@ -69,27 +69,44 @@ class _PorterCaseListScreenState extends State<PorterCaseListScreen>
     loadCases();
   }
 
+  bool _isPopupShowing = false;
+
   void loadCases() async {
     if (username.isEmpty) return;
     try {
       List<Map<String, dynamic>> fetchedCases = [];
 
       if (selectedTabIndex == 1) {
-        // เสร็จสิ้น (tab index 1 เพราะลบ in_progress ออกแล้ว)
+        // เสร็จสิ้น
         fetchedCases = await RecordhistoryFunction.fetchCompletedCasesPorter(
           username,
         );
-        // แสดงเคสเสร็จสิ้นทั้งหมด (ไม่กรองวันที่)
         fetchedCases = fetchedCases.map((c) {
           c['assigned_porter_username'] =
               c['assigned_porter_username'] ?? username;
-          // เพิ่ม status เพื่อใช้แสดงผลใน card
           c['status'] = 'completed';
           return c;
         }).toList();
       } else {
         // Vacant or In Progress
         var myCases = await GetcaseFunction.fetchMyCasesPorter(username);
+
+        // Check for active case (in_progress)
+        final activeCase = myCases.firstWhere(
+          (c) => c['status'] == 'in_progress',
+          orElse: () => {},
+        );
+
+        // If there is an active case and popup is not showing, show it!
+        if (activeCase.isNotEmpty && !_isPopupShowing) {
+          // Use WidgetsBinding to ensure build is done before showing dialog
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              _showInProgressPopup(activeCase);
+            }
+          });
+        }
+
         var selectedStatus = statusKey(tabs[selectedTabIndex]);
         fetchedCases = myCases
             .where((c) => c['status'] == selectedStatus)
@@ -97,6 +114,16 @@ class _PorterCaseListScreenState extends State<PorterCaseListScreen>
       }
 
       setState(() {
+        // Sort ER cases first
+        fetchedCases.sort((a, b) {
+          final aType = (a['patient_type'] ?? '').toString().toUpperCase();
+          final bType = (b['patient_type'] ?? '').toString().toUpperCase();
+          final aIsER = aType.startsWith('ER');
+          final bIsER = bType.startsWith('ER');
+          if (aIsER && !bIsER) return -1;
+          if (!aIsER && bIsER) return 1;
+          return 0;
+        });
         cases = fetchedCases;
       });
     } catch (e) {
@@ -104,22 +131,16 @@ class _PorterCaseListScreenState extends State<PorterCaseListScreen>
     }
   }
 
-  // Helper function to format patient ID without duplicate HN
+  // Helper function to format patient ID - keep the prefix for display
   String _formatPatientId(String? patientId) {
     if (patientId == null || patientId.isEmpty) return '-';
-    // Remove HN prefix if already exists
-    String cleanId = patientId.replaceFirst(
-      RegExp(r'^HN', caseSensitive: false),
-      '',
-    );
-    return cleanId;
+    return patientId;
   }
 
   void handleCaseAction(Map<String, dynamic> item) async {
     final currentStatus = item['status']?.toString() ?? 'pending';
 
     if (currentStatus == 'pending') {
-      // Porter กดรับเคส -> อัปเดตเป็น in_progress แล้วแสดง popup
       try {
         final success = await UpdateCase.updateStatus(
           item['case_id'].toString(),
@@ -127,10 +148,9 @@ class _PorterCaseListScreenState extends State<PorterCaseListScreen>
           assignedPorter: username,
         );
         if (success) {
-          // อัปเดต item status locally
           item['status'] = 'in_progress';
-          // แสดง popup กำลังดำเนินการ
-          _showInProgressPopup(item);
+          // User accepted case, refresh to trigger auto-popup
+          loadCases();
         }
       } catch (e) {
         print('❌ Error updating case: $e');
@@ -139,12 +159,16 @@ class _PorterCaseListScreenState extends State<PorterCaseListScreen>
         );
       }
     } else if (currentStatus == 'in_progress') {
-      // กดเสร็จสิ้นจากหน้า list (ปกติจะไม่เกิดเพราะอยู่ใน popup)
-      _completeCase(item);
+      if (!_isPopupShowing) {
+        _showInProgressPopup(item);
+      }
     }
   }
 
   void _showInProgressPopup(Map<String, dynamic> item) {
+    if (_isPopupShowing) return; // Prevent double popup
+    _isPopupShowing = true;
+
     showDialog(
       context: context,
       barrierDismissible: false, // ไม่สามารถปิด popup โดยแตะข้างนอก
@@ -169,199 +193,206 @@ class _PorterCaseListScreenState extends State<PorterCaseListScreen>
                   ),
                 ],
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Status Badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.shade100,
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.orange.shade700,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          'กำลังดำเนินการ',
-                          style: TextStyle(
-                            color: Colors.orange.shade800,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Patient ID
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.indigo.shade600,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Text(
-                          'HN',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        _formatPatientId(item['patient_id']?.toString()),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 32,
-                          color: Colors.black87,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Patient Type
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      'ประเภท: ${item['patient_type'] ?? '-'}',
-                      style: TextStyle(
-                        color: Colors.blue.shade700,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Room From
-                  _buildLocationCard(
-                    icon: Icons.location_on,
-                    color: Colors.green,
-                    label: 'จุดรับ',
-                    value: item['room_from'] ?? '-',
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Arrow
-                  Icon(
-                    Icons.arrow_downward_rounded,
-                    color: Colors.grey.shade400,
-                    size: 30,
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Room To
-                  _buildLocationCard(
-                    icon: Icons.flag,
-                    color: Colors.red,
-                    label: 'จุดส่ง',
-                    value: item['room_to'] ?? '-',
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Stretcher Type
-                  if (item['stretcher_type'] != null)
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Status Badge
                     Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 10,
+                      ),
                       decoration: BoxDecoration(
-                        color: Colors.purple.shade50,
-                        borderRadius: BorderRadius.circular(12),
+                        color: Colors.orange.shade100,
+                        borderRadius: BorderRadius.circular(30),
                       ),
                       child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
-                            Icons.airline_seat_flat,
-                            color: Colors.purple.shade600,
+                          SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.orange.shade700,
+                            ),
                           ),
                           const SizedBox(width: 10),
                           Text(
-                            'เปล: ${item['stretcher_type']}',
+                            'กำลังดำเนินการ',
                             style: TextStyle(
-                              color: Colors.purple.shade700,
-                              fontWeight: FontWeight.w600,
+                              color: Colors.orange.shade800,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
                             ),
                           ),
                         ],
                       ),
                     ),
-                  const SizedBox(height: 30),
+                    const SizedBox(height: 24),
 
-                  // Slide to Complete Bar
-                  _SlideToCompleteWidget(
-                    onComplete: () async {
-                      Navigator.of(dialogContext).pop();
-                      await _completeCase(item);
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Cancel Button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: OutlinedButton.icon(
-                      onPressed: () async {
-                        Navigator.of(dialogContext).pop();
-                        await _cancelCase(item);
-                      },
-                      icon: Icon(
-                        Icons.cancel_outlined,
-                        color: Colors.red.shade600,
-                      ),
-                      label: Text(
-                        'ยกเลิกเคส',
-                        style: TextStyle(
-                          color: Colors.red.shade600,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                    // Patient ID
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.indigo.shade600,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Text(
+                            'HN',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
+                          ),
                         ),
+                        const SizedBox(width: 12),
+                        Text(
+                          _formatPatientId(item['patient_id']?.toString()),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 32,
+                            color: Colors.black87,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Patient Type
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 6,
                       ),
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: Colors.red.shade300, width: 2),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        'ประเภท: ${item['patient_type'] ?? '-'}',
+                        style: TextStyle(
+                          color: Colors.blue.shade700,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 20),
+
+                    // Room From
+                    _buildLocationCard(
+                      icon: Icons.location_on,
+                      color: Colors.green,
+                      label: 'จุดรับ',
+                      value: item['room_from'] ?? '-',
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Arrow
+                    Icon(
+                      Icons.arrow_downward_rounded,
+                      color: Colors.grey.shade400,
+                      size: 30,
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Room To
+                    _buildLocationCard(
+                      icon: Icons.flag,
+                      color: Colors.red,
+                      label: 'จุดส่ง',
+                      value: item['room_to'] ?? '-',
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Stretcher Type
+                    if (item['stretcher_type'] != null)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.purple.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.airline_seat_flat,
+                              color: Colors.purple.shade600,
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              'เปล: ${item['stretcher_type']}',
+                              style: TextStyle(
+                                color: Colors.purple.shade700,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    const SizedBox(height: 30),
+
+                    // Slide to Complete Bar
+                    _SlideToCompleteWidget(
+                      onComplete: () async {
+                        Navigator.of(dialogContext).pop();
+                        await _completeCase(item);
+                      },
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Cancel Button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          Navigator.of(dialogContext).pop();
+                          await _cancelCase(item);
+                        },
+                        icon: Icon(
+                          Icons.cancel_outlined,
+                          color: Colors.red.shade600,
+                        ),
+                        label: Text(
+                          'ยกเลิกเคส',
+                          style: TextStyle(
+                            color: Colors.red.shade600,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(
+                            color: Colors.red.shade300,
+                            width: 2,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
         );
       },
-    );
+    ).then((_) {
+      _isPopupShowing = false;
+    });
   }
 
   Widget _buildLocationCard({
@@ -672,18 +703,12 @@ class _PorterCaseListScreenState extends State<PorterCaseListScreen>
                               backgroundColor: Colors.white,
                               backgroundImage: _selectedImage != null
                                   ? FileImage(_selectedImage!) as ImageProvider
-                                  : (profileImageUrl != null
+                                  : (profileImageUrl != null &&
+                                            profileImageUrl!.isNotEmpty
                                         ? NetworkImage(profileImageUrl!)
-                                        : null),
-                              child:
-                                  (_selectedImage == null &&
-                                      profileImageUrl == null)
-                                  ? Icon(
-                                      Icons.person,
-                                      size: 50,
-                                      color: AppTheme.deepPurple,
-                                    )
-                                  : null,
+                                        : const AssetImage(
+                                            'assets/default_porter_avatar.png',
+                                          )),
                             ),
                           ),
                           // Camera icon overlay
@@ -1059,7 +1084,7 @@ class _PorterCaseListScreenState extends State<PorterCaseListScreen>
   }
 }
 
-class PorterCaseCard extends StatelessWidget {
+class PorterCaseCard extends StatefulWidget {
   final Map<String, dynamic> item;
   final String username;
   final Function(Map<String, dynamic>) onAction;
@@ -1072,6 +1097,40 @@ class PorterCaseCard extends StatelessWidget {
     required this.onAction,
     required this.onTap,
   });
+
+  @override
+  State<PorterCaseCard> createState() => _PorterCaseCardState();
+}
+
+class _PorterCaseCardState extends State<PorterCaseCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+    // Start pulsing for ER cases
+    final patientType = (widget.item['patient_type'] ?? '')
+        .toString()
+        .toUpperCase();
+    if (patientType.startsWith('ER')) {
+      _pulseController.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
 
   String timeAgo(String createdAt) {
     try {
@@ -1087,59 +1146,109 @@ class PorterCaseCard extends StatelessWidget {
     }
   }
 
-  // Helper function to format patient ID without duplicate HN
-  String formatPatientId(String? patientId) {
+  // Helper to extract prefix from patient ID
+  String getPatientIdPrefix(String? patientId) {
+    if (patientId == null || patientId.isEmpty) return 'HN';
+    final upper = patientId.toUpperCase();
+    if (upper.startsWith('AN')) return 'AN';
+    if (upper.startsWith('XN')) return 'XN';
+    if (upper.startsWith('DN')) return 'DN';
+    if (upper.startsWith('HN')) return 'HN';
+    return 'HN';
+  }
+
+  // Helper to get patient ID number without prefix
+  String getPatientIdNumber(String? patientId) {
     if (patientId == null || patientId.isEmpty) return '-';
-    // Remove HN prefix if already exists
-    String cleanId = patientId.replaceFirst(
-      RegExp(r'^HN', caseSensitive: false),
-      '',
-    );
-    return cleanId;
+    final upper = patientId.toUpperCase();
+    for (final prefix in ['HN', 'AN', 'XN', 'DN']) {
+      if (upper.startsWith(prefix)) {
+        return patientId.substring(prefix.length);
+      }
+    }
+    return patientId;
   }
 
   @override
   Widget build(BuildContext context) {
+    final item = widget.item;
     final status = item['status']?.toString() ?? 'pending';
     bool isPending = status == 'pending';
     bool isCompleted = status == 'completed';
 
-    // Color scheme based on status
-    Color cardBorderColor = isPending
-        ? Colors.blue.shade200
-        : (isCompleted ? Colors.green.shade300 : Colors.orange.shade200);
-    Color statusBgColor = isPending
-        ? Colors.blue.shade50
-        : (isCompleted ? Colors.green.shade50 : Colors.orange.shade50);
-    Color statusTextColor = isPending
-        ? Colors.blue.shade700
-        : (isCompleted ? Colors.green.shade700 : Colors.orange.shade700);
-    IconData statusIcon = isPending
-        ? Icons.pending_actions
-        : (isCompleted ? Icons.check_circle : Icons.sync);
-    String statusText = isPending
-        ? 'รอดำเนินการ'
-        : (isCompleted ? 'เสร็จสิ้น' : 'กำลังดำเนินการ');
+    // Check if this is an ER (Emergency) case
+    final patientType = (item['patient_type'] ?? '').toString().toUpperCase();
+    bool isER = patientType.startsWith('ER');
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: cardBorderColor, width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: cardBorderColor.withOpacity(0.2),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+    // Color scheme based on status and ER
+    Color cardBorderColor;
+    Color statusBgColor;
+    Color statusTextColor;
+    IconData statusIcon;
+    String statusText;
+
+    if (isER && isPending) {
+      // Emergency ER styling
+      cardBorderColor = Colors.red.shade400;
+      statusBgColor = Colors.red.shade100;
+      statusTextColor = Colors.red.shade700;
+      statusIcon = Icons.emergency;
+      statusText = '🚨 ฉุกเฉิน!';
+    } else if (isPending) {
+      cardBorderColor = Colors.blue.shade200;
+      statusBgColor = Colors.blue.shade50;
+      statusTextColor = Colors.blue.shade700;
+      statusIcon = Icons.pending_actions;
+      statusText = 'รอดำเนินการ';
+    } else if (isCompleted) {
+      cardBorderColor = Colors.green.shade300;
+      statusBgColor = Colors.green.shade50;
+      statusTextColor = Colors.green.shade700;
+      statusIcon = Icons.check_circle;
+      statusText = 'เสร็จสิ้น';
+    } else {
+      cardBorderColor = Colors.orange.shade200;
+      statusBgColor = Colors.orange.shade50;
+      statusTextColor = Colors.orange.shade700;
+      statusIcon = Icons.sync;
+      statusText = 'กำลังดำเนินการ';
+    }
+    // Use AnimatedBuilder for ER pulsing effect (or no-op for non-ER)
+    return AnimatedBuilder(
+      animation: _pulseAnimation,
+      builder: (context, child) {
+        final double pulseValue = (isER && isPending)
+            ? _pulseAnimation.value
+            : 1.0;
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            color: (isER && isPending) ? Colors.red.shade50 : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: cardBorderColor,
+              width: (isER && isPending) ? 3.0 : 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: (isER && isPending)
+                    ? Colors.red.withOpacity(0.35 * pulseValue)
+                    : cardBorderColor.withOpacity(0.2),
+                blurRadius: (isER && isPending) ? 18 * pulseValue : 12,
+                spreadRadius: (isER && isPending) ? 2 * pulseValue : 0,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-        ],
-      ),
+          child: child,
+        );
+      },
       child: Material(
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(20),
         child: InkWell(
-          onTap: onTap,
+          onTap: widget.onTap,
           borderRadius: BorderRadius.circular(20),
           child: Padding(
             padding: const EdgeInsets.all(20),
@@ -1215,16 +1324,18 @@ class PorterCaseCard extends StatelessWidget {
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
+                        horizontal: 12,
+                        vertical: 5,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.indigo.shade600,
+                        color: isER
+                            ? Colors.red.shade600
+                            : Colors.indigo.shade600,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Text(
-                        'HN',
-                        style: TextStyle(
+                      child: Text(
+                        getPatientIdPrefix(item['patient_id']?.toString()),
+                        style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
@@ -1232,46 +1343,63 @@ class PorterCaseCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 10),
-                    Text(
-                      formatPatientId(item['patient_id']?.toString()),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 24,
-                        color: Colors.black87,
-                        letterSpacing: 0.5,
+                    Expanded(
+                      child: Text(
+                        getPatientIdNumber(item['patient_id']?.toString()),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 26,
+                          color: isER
+                              ? Colors.red.shade800
+                              : Colors.indigo.shade800,
+                          letterSpacing: 1.0,
+                        ),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
 
-                // Patient Type Badge
+                // Patient Type Badge - Special styling for ER
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
+                    horizontal: 14,
+                    vertical: 8,
                   ),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [Colors.purple.shade100, Colors.purple.shade50],
+                      colors: isER
+                          ? [Colors.red.shade200, Colors.red.shade100]
+                          : [Colors.purple.shade100, Colors.purple.shade50],
                     ),
                     borderRadius: BorderRadius.circular(20),
+                    border: isER
+                        ? Border.all(color: Colors.red.shade300, width: 1.5)
+                        : null,
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        Icons.person_outline,
-                        size: 16,
-                        color: Colors.purple.shade700,
+                        isER
+                            ? Icons.warning_amber_rounded
+                            : Icons.person_outline,
+                        size: isER ? 18 : 16,
+                        color: isER
+                            ? Colors.red.shade700
+                            : Colors.purple.shade700,
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        'ประเภท: ${item['patient_type'] ?? '-'}',
+                        isER
+                            ? '🚨 ${item['patient_type'] ?? 'ER'} - ฉุกเฉิน!'
+                            : 'ประเภท: ${item['patient_type'] ?? '-'}',
                         style: TextStyle(
-                          color: Colors.purple.shade700,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
+                          color: isER
+                              ? Colors.red.shade800
+                              : Colors.purple.shade700,
+                          fontWeight: isER ? FontWeight.bold : FontWeight.w600,
+                          fontSize: isER ? 14 : 13,
                         ),
                       ),
                     ],
@@ -1410,7 +1538,7 @@ class PorterCaseCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     TextButton.icon(
-                      onPressed: onTap,
+                      onPressed: widget.onTap,
                       icon: Icon(
                         Icons.info_outline,
                         size: 18,
@@ -1432,7 +1560,7 @@ class PorterCaseCard extends StatelessWidget {
                     ),
                     if (!isCompleted)
                       ElevatedButton.icon(
-                        onPressed: () => onAction(item),
+                        onPressed: () => widget.onAction(item),
                         icon: Icon(
                           isPending ? Icons.play_arrow : Icons.check,
                           size: 20,

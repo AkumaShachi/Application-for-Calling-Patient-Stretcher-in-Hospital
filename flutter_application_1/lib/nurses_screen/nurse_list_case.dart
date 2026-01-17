@@ -435,18 +435,12 @@ class _NurseListCaseScreenState extends State<NurseListCaseScreen>
                               backgroundColor: Colors.white,
                               backgroundImage: _selectedImage != null
                                   ? FileImage(_selectedImage!) as ImageProvider
-                                  : (profileImageUrl != null
+                                  : (profileImageUrl != null &&
+                                            profileImageUrl!.isNotEmpty
                                         ? NetworkImage(profileImageUrl!)
-                                        : null),
-                              child:
-                                  (_selectedImage == null &&
-                                      profileImageUrl == null)
-                                  ? Icon(
-                                      Icons.person,
-                                      size: 50,
-                                      color: AppTheme.deepPurple,
-                                    )
-                                  : null,
+                                        : const AssetImage(
+                                            'assets/default_nurse_avatar.png',
+                                          )),
                             ),
                           ),
                           // Camera icon overlay
@@ -1034,32 +1028,34 @@ class CaseListView extends StatelessWidget {
                                 children: [
                                   Container(
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 3,
+                                      horizontal: 10,
+                                      vertical: 4,
                                     ),
                                     decoration: BoxDecoration(
                                       color: Colors.indigo.shade600,
-                                      borderRadius: BorderRadius.circular(6),
+                                      borderRadius: BorderRadius.circular(8),
                                     ),
-                                    child: const Text(
-                                      'HN',
-                                      style: TextStyle(
-                                        fontSize: 11,
+                                    child: Text(
+                                      _getPatientIdPrefix(
+                                        item['patient_id']?.toString(),
+                                      ),
+                                      style: const TextStyle(
+                                        fontSize: 13,
                                         fontWeight: FontWeight.bold,
                                         color: Colors.white,
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 6),
+                                  const SizedBox(width: 8),
                                   Text(
-                                    _formatPatientId(
+                                    _getPatientIdNumber(
                                       item['patient_id']?.toString(),
                                     ),
                                     style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.grey.shade800,
-                                      letterSpacing: 0.5,
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w900,
+                                      color: Colors.indigo.shade800,
+                                      letterSpacing: 1.0,
                                     ),
                                   ),
                                 ],
@@ -1382,15 +1378,34 @@ class CaseListView extends StatelessWidget {
     );
   }
 
-  // Helper function to format patient ID without duplicate HN
+  // Helper to extract prefix from patient ID (HN/AN/XN/DN)
+  String _getPatientIdPrefix(String? patientId) {
+    if (patientId == null || patientId.isEmpty) return 'HN';
+    final upper = patientId.toUpperCase();
+    if (upper.startsWith('AN')) return 'AN';
+    if (upper.startsWith('XN')) return 'XN';
+    if (upper.startsWith('DN')) return 'DN';
+    if (upper.startsWith('HN')) return 'HN';
+    return 'HN'; // default
+  }
+
+  // Helper to get patient ID number without prefix
+  String _getPatientIdNumber(String? patientId) {
+    if (patientId == null || patientId.isEmpty) return '-';
+    final upper = patientId.toUpperCase();
+    // Remove known prefixes
+    for (final prefix in ['HN', 'AN', 'XN', 'DN']) {
+      if (upper.startsWith(prefix)) {
+        return patientId.substring(prefix.length);
+      }
+    }
+    return patientId;
+  }
+
+  // Helper function to format patient ID - keep as-is
   String _formatPatientId(String? patientId) {
     if (patientId == null || patientId.isEmpty) return '-';
-    // Remove HN prefix if already exists
-    String cleanId = patientId.replaceFirst(
-      RegExp(r'^HN', caseSensitive: false),
-      '',
-    );
-    return cleanId;
+    return patientId;
   }
 
   // Helper function to format completed time

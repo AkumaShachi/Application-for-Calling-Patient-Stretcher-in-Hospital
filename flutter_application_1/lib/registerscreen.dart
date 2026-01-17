@@ -20,19 +20,25 @@ class _RegisterScreenState extends State<RegisterScreen>
     with TickerProviderStateMixin {
   var _formKey = GlobalKey<FormState>();
   var _idCtrl = TextEditingController();
-  var _nameCtrl = TextEditingController();
+  var _fnameCtrl = TextEditingController();
+  var _lnameCtrl = TextEditingController();
   var _phoneCtrl = TextEditingController();
   var _emailCtrl = TextEditingController();
   var _usernameCtrl = TextEditingController();
   var _passwordCtrl = TextEditingController();
   var _confirmCtrl = TextEditingController();
-  var _TokenCtrl = TextEditingController();
 
-  int _fieldsIndex = 10;
+  int _fieldsIndex = 11;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _loading = false;
-  String? selectedRole = '';
+  String? selectedRole;
+
+  // Role options for dropdown
+  final List<Map<String, String>> _roleOptions = [
+    {'value': 'porter', 'label': 'พนักงานเปล'},
+    {'value': 'nurse', 'label': 'พยาบาล'},
+  ];
 
   late final AnimationController _inCtrl = AnimationController(
     vsync: this,
@@ -114,10 +120,10 @@ class _RegisterScreenState extends State<RegisterScreen>
     _inCtrl.dispose();
     _shakeCtrl.dispose();
     _idCtrl.dispose();
-    _nameCtrl.dispose();
+    _fnameCtrl.dispose();
+    _lnameCtrl.dispose();
     _phoneCtrl.dispose();
     _emailCtrl.dispose();
-    _TokenCtrl.dispose();
     _usernameCtrl.dispose();
     _passwordCtrl.dispose();
     _confirmCtrl.dispose();
@@ -132,20 +138,16 @@ class _RegisterScreenState extends State<RegisterScreen>
       return;
     }
 
-    if (_passwordCtrl.text.length < 6) {
+    // ตรวจ role
+    if (selectedRole == null || selectedRole!.isEmpty) {
       _shakeCtrl.forward(from: 0);
-      _showMsg('รหัสผ่านอย่างน้อย 6 ตัวอักษร');
+      _showMsg('กรุณาเลือกประเภทบุคลากร');
       return;
     }
 
-    // ตรวจ token เพื่อเลือก role
-    if (_TokenCtrl.text == "123456") {
-      selectedRole = "porter"; // ตรงกับ DB
-    } else if (_TokenCtrl.text == "654321") {
-      selectedRole = "nurse"; // ตรงกับ DB
-    } else {
+    if (_passwordCtrl.text.length < 6) {
       _shakeCtrl.forward(from: 0);
-      _showMsg('รหัสพนักงานไม่ถูกต้อง');
+      _showMsg('รหัสผ่านอย่างน้อย 6 ตัวอักษร');
       return;
     }
 
@@ -163,14 +165,15 @@ class _RegisterScreenState extends State<RegisterScreen>
 
     setState(() => _loading = false);
 
-    var fullName = _nameCtrl.text.split(' ');
+    // Remove dashes from phone before sending
+    final cleanPhone = _phoneCtrl.text.replaceAll('-', '');
 
     // data เบื้องต้น (user)
     var data = {
       "id_U": _idCtrl.text,
-      "fname_U": fullName[0],
-      "lname_U": fullName.length > 1 ? fullName[1] : '',
-      "phone_U": _phoneCtrl.text,
+      "fname_U": _fnameCtrl.text,
+      "lname_U": _lnameCtrl.text,
+      "phone_U": cleanPhone,
       "email_U": _emailCtrl.text,
       "role_U": selectedRole,
       "username": _usernameCtrl.text,
@@ -201,15 +204,9 @@ class _RegisterScreenState extends State<RegisterScreen>
       _showMsg('รหัสผ่านอย่างน้อย 6 ตัวอักษร');
       return;
     }
-    if (_TokenCtrl.text == "123456" || _TokenCtrl.text == "654321") {
-      if (_TokenCtrl.text == "123456") {
-        selectedRole = "porter";
-      } else if (_TokenCtrl.text == "654321") {
-        selectedRole = "nurse";
-      }
-    } else {
+    if (selectedRole == null || selectedRole!.isEmpty) {
       _shakeCtrl.forward(from: 0);
-      _showMsg('รหัสพนักงานไม่ถูกต้อง');
+      _showMsg('กรุณาเลือกประเภทบุคลากร');
       return;
     }
     if (_passwordCtrl.text != _confirmCtrl.text) {
@@ -228,13 +225,14 @@ class _RegisterScreenState extends State<RegisterScreen>
     await Future.delayed(const Duration(milliseconds: 350));
     if (!mounted) return;
 
-    var fullName = _nameCtrl.text.split(' ');
+    // Remove dashes from phone before sending
+    final cleanPhone = _phoneCtrl.text.replaceAll('-', '');
 
     var data = {
       "id_U": _idCtrl.text,
-      "fname_U": fullName[0],
-      "lname_U": fullName.length > 1 ? fullName[1] : '',
-      "phone_U": _phoneCtrl.text,
+      "fname_U": _fnameCtrl.text,
+      "lname_U": _lnameCtrl.text,
+      "phone_U": cleanPhone,
       "email_U": _emailCtrl.text,
       "role_U": selectedRole,
       "username": _usernameCtrl.text,
@@ -267,55 +265,265 @@ class _RegisterScreenState extends State<RegisterScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    const borderRadius = BorderRadius.all(Radius.circular(14));
 
     final fields = [
+      // 1. Role Dropdown (First position) - ใส่ icon ให้แต่ละประเภท
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.work_rounded,
+                color: const Color(0xFF1976D2),
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'ประเภทบุคลากร',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: Color(0xFF1A1A2E),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: borderRadius,
+              border: Border.all(
+                color: selectedRole != null
+                    ? const Color(0xFF1976D2)
+                    : Colors.grey.shade300,
+                width: selectedRole != null ? 2 : 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: DropdownButtonFormField<String>(
+              value: selectedRole?.isEmpty == true ? null : selectedRole,
+              decoration: const InputDecoration(
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
+              ),
+              hint: Text(
+                'เลือกประเภทบุคลากร',
+                style: TextStyle(color: Colors.grey.shade500),
+              ),
+              icon: Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: const Color(0xFF1976D2),
+              ),
+              isExpanded: true,
+              items: [
+                // พนักงานเปล
+                DropdownMenuItem<String>(
+                  value: 'porter',
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE3F2FD),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.local_shipping_rounded,
+                          color: Color(0xFF1976D2),
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'พนักงานเปล',
+                        style: TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
+                ),
+                // พยาบาล
+                DropdownMenuItem<String>(
+                  value: 'nurse',
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE8F5E9),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.medical_services_rounded,
+                          color: Color(0xFF2E7D32),
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'พยาบาล',
+                        style: TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              onChanged: (value) {
+                setState(() => selectedRole = value);
+              },
+              validator: (v) =>
+                  (v == null || v.isEmpty) ? 'กรุณาเลือกประเภทบุคลากร' : null,
+            ),
+          ),
+        ],
+      ),
+      // 2. ID Field (digits only, max 10)
       _LabeledField(
         controller: _idCtrl,
         label: 'เลขประจำตัว',
         hint: '',
         icon: Icons.badge_rounded,
+        keyboard: TextInputType.number,
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          LengthLimitingTextInputFormatter(10),
+        ],
       ),
-      _LabeledField(
-        controller: _nameCtrl,
-        label: 'ชื่อ-นามสกุล',
-        hint: '',
-        icon: Icons.person_rounded,
+      // 3. Name Row (First Name + Last Name)
+      Row(
+        children: [
+          Expanded(
+            child: _LabeledField(
+              controller: _fnameCtrl,
+              label: 'ชื่อ',
+              hint: '',
+              icon: Icons.person_rounded,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _LabeledField(
+              controller: _lnameCtrl,
+              label: 'นามสกุล',
+              hint: '',
+              icon: Icons.person_outline_rounded,
+            ),
+          ),
+        ],
       ),
-      _LabeledField(
-        controller: _phoneCtrl,
-        label: 'เบอร์โทรศัพท์',
-        hint: '',
-        keyboard: TextInputType.phone,
-        icon: Icons.phone_rounded,
+      // 4. Phone Field (formatted with dashes)
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'เบอร์โทรศัพท์',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Material(
+            elevation: 0,
+            borderRadius: borderRadius,
+            child: TextFormField(
+              controller: _phoneCtrl,
+              keyboardType: TextInputType.phone,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(10),
+                _PhoneNumberFormatter(),
+              ],
+              validator: (v) {
+                if (v == null || v.isEmpty) return 'กรุณากรอก เบอร์โทรศัพท์';
+                final digits = v.replaceAll('-', '');
+                if (digits.length != 10) return 'เบอร์โทรต้องมี 10 หลัก';
+                return null;
+              },
+              decoration: InputDecoration(
+                prefixIcon: Icon(
+                  Icons.phone_rounded,
+                  color: AppTheme.deepPurple.withOpacity(0.7),
+                  size: 20,
+                ),
+                hintText: '',
+                hintStyle: TextStyle(
+                  color: Colors.grey.withOpacity(0.4),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                ),
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 16,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: borderRadius,
+                  borderSide: BorderSide(
+                    color: Colors.grey.withOpacity(0.2),
+                    width: 1.0,
+                  ),
+                ),
+                focusedBorder: const OutlineInputBorder(
+                  borderRadius: borderRadius,
+                  borderSide: BorderSide(
+                    color: AppTheme.deepPurple,
+                    width: 1.5,
+                  ),
+                ),
+                errorBorder: OutlineInputBorder(
+                  borderRadius: borderRadius,
+                  borderSide: BorderSide(
+                    color: Colors.red.withOpacity(0.5),
+                    width: 1.0,
+                  ),
+                ),
+                focusedErrorBorder: const OutlineInputBorder(
+                  borderRadius: borderRadius,
+                  borderSide: BorderSide(color: Colors.red, width: 1.5),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
+      // 5. Email Field
       _LabeledField(
         controller: _emailCtrl,
         label: 'อีเมล',
         hint: '',
         keyboard: TextInputType.emailAddress,
-        icon: Icons.alternate_email_rounded,
+        icon: Icons.email_rounded,
         validator: (v) {
           if (v == null || v.isEmpty) return 'กรุณากรอก อีเมล';
           final ok = RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v);
           return ok ? null : 'รูปแบบอีเมลไม่ถูกต้อง';
         },
       ),
-      _LabeledField(
-        controller: _TokenCtrl,
-        label: 'รหัสเจ้าหน้าที่/พยาบาล',
-        hint: 'รหัสพนักงาน',
-        icon: Icons.account_circle_rounded,
-      ),
+      // 6. Username
       _LabeledField(
         controller: _usernameCtrl,
         label: 'ชื่อผู้ใช้',
-        hint: 'username',
+        hint: '',
         icon: Icons.account_circle_rounded,
       ),
+      // 7. Password
       _LabeledPasswordField(
         controller: _passwordCtrl,
         label: 'รหัสผ่าน',
-        hint: 'อย่างน้อย 6 ตัวอักษร',
+        hint: '',
         obscure: _obscurePassword,
         onToggle: () => setState(() => _obscurePassword = !_obscurePassword),
         validator: (v) {
@@ -324,6 +532,7 @@ class _RegisterScreenState extends State<RegisterScreen>
           return null;
         },
       ),
+      // 9. Confirm Password
       _LabeledPasswordField(
         controller: _confirmCtrl,
         label: 'ยืนยันรหัสผ่าน',
@@ -340,42 +549,14 @@ class _RegisterScreenState extends State<RegisterScreen>
     ];
 
     return Scaffold(
-      body: Stack(
-        children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment(-1, -1),
-                end: Alignment(1, 1),
-                colors: [Color(0xFFF7F5FF), Color(0xFFEDE9FF)],
-              ),
-            ),
-          ),
-          Positioned(
-            top: -40,
-            left: -30,
-            child: _BlurCircle(
-              diameter: 220,
-              colors: [
-                AppTheme.purple.withOpacity(0.28),
-                AppTheme.deepPurple.withOpacity(0.18),
-              ],
-            ),
-          ),
-          Positioned(
-            bottom: -20,
-            right: -20,
-            child: _BlurCircle(
-              diameter: 260,
-              colors: [
-                AppTheme.deepPurple.withOpacity(0.22),
-                AppTheme.purple.withOpacity(0.18),
-              ],
-            ),
-          ),
-          SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      backgroundColor: const Color(0xFFF5F7FA),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Blue Header - สีพื้นเรียบ user-friendly
+            Container(
+              color: const Color(0xFF1976D2),
+              padding: const EdgeInsets.fromLTRB(8, 8, 16, 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -385,7 +566,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                         onPressed: () => Navigator.pop(context),
                         icon: const Icon(
                           Icons.arrow_back_rounded,
-                          color: AppTheme.deepPurple,
+                          color: Colors.white,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -393,95 +574,118 @@ class _RegisterScreenState extends State<RegisterScreen>
                         'ลงทะเบียนบุคลากร',
                         style: TextStyle(
                           fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          color: AppTheme.deepPurple,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
-                  FadeTransition(
-                    opacity: _titleFade,
-                    child: SlideTransition(
-                      position: _titleSlide,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          ShaderMask(
-                            shaderCallback: (r) => const LinearGradient(
-                              colors: [AppTheme.deepPurple, AppTheme.purple],
-                            ).createShader(r),
-                            child: const Text(
-                              'สร้างบัญชีใหม่',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 32,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'กรุณากรอกข้อมูลให้ครบถ้วน',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: Colors.black87.withOpacity(0.6),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  SlideTransition(
-                    position: _shakeOffset,
-                    child: FadeTransition(
-                      opacity: _cardFade,
-                      child: SlideTransition(
-                        position: _cardSlide,
-                        child: _GlassCard(
-                          child: Form(
-                            key: _formKey,
-                            child: Column(
-                              children: [
-                                for (int i = 0; i < fields.length; i++)
-                                  _animatedField(i, fields[i]),
-                                const SizedBox(height: 12),
-                                _animatedField(
-                                  fields.length,
-                                  _GradientButton(
-                                    text: 'ลงทะเบียน',
-                                    loading: _loading,
-                                    onTap: _loading ? null : _submit,
-                                  ),
-                                ),
-                              ],
-                            ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'สร้างบัญชีใหม่',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'กรุณากรอกข้อมูลให้ครบถ้วน',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.85),
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  Center(child: Opacity(opacity: 0.7)),
                 ],
               ),
             ),
-          ),
-        ],
+
+            // Form Content
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        for (int i = 0; i < fields.length; i++)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: fields[i],
+                          ),
+                        const SizedBox(height: 16),
+                        // Submit Button - สีฟ้าพื้น
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: ElevatedButton(
+                            onPressed: _loading ? null : _submit,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF1976D2),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: _loading
+                                ? const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2.5,
+                                    ),
+                                  )
+                                : const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.person_add_rounded, size: 20),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'ลงทะเบียน',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
-
-  Widget _animatedField(int i, Widget child) => FadeTransition(
-    opacity: _fades[i],
-    child: SlideTransition(
-      position: _slides[i],
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 7),
-        child: child,
-      ),
-    ),
-  );
 }
 
 /* ------------------------- Reusable UI ------------------------- */
@@ -557,6 +761,7 @@ class _LabeledField extends StatelessWidget {
   final TextInputType? keyboard;
   final IconData? icon;
   final String? Function(String?)? validator;
+  final List<TextInputFormatter>? inputFormatters;
 
   const _LabeledField({
     required this.controller,
@@ -565,6 +770,7 @@ class _LabeledField extends StatelessWidget {
     this.keyboard,
     this.icon,
     this.validator,
+    this.inputFormatters,
   });
 
   @override
@@ -591,30 +797,48 @@ class _LabeledField extends StatelessWidget {
             validator:
                 validator ??
                 (v) => (v == null || v.isEmpty) ? 'กรุณากรอก $label' : null,
-            inputFormatters: keyboard == TextInputType.phone
-                ? [FilteringTextInputFormatter.digitsOnly]
-                : null,
+            inputFormatters: inputFormatters,
             decoration: InputDecoration(
               prefixIcon: icon != null
-                  ? Icon(icon, color: AppTheme.deepPurple)
+                  ? Icon(
+                      icon,
+                      color: AppTheme.deepPurple.withOpacity(0.7),
+                      size: 20,
+                    )
                   : null,
               hintText: hint,
+              hintStyle: TextStyle(
+                color: Colors.grey.withOpacity(0.4),
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+              ),
               filled: true,
               fillColor: Colors.white,
               contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 14,
+                horizontal: 16,
+                vertical: 16,
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: borderRadius,
-                borderSide: const BorderSide(
-                  color: AppTheme.lavender,
-                  width: 1.2,
+                borderSide: BorderSide(
+                  color: Colors.grey.withOpacity(0.2),
+                  width: 1.0,
                 ),
               ),
               focusedBorder: const OutlineInputBorder(
                 borderRadius: borderRadius,
-                borderSide: BorderSide(color: AppTheme.deepPurple, width: 1.6),
+                borderSide: BorderSide(color: AppTheme.deepPurple, width: 1.5),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: borderRadius,
+                borderSide: BorderSide(
+                  color: Colors.red.withOpacity(0.5),
+                  width: 1.0,
+                ),
+              ),
+              focusedErrorBorder: const OutlineInputBorder(
+                borderRadius: borderRadius,
+                borderSide: BorderSide(color: Colors.red, width: 1.5),
               ),
             ),
           ),
@@ -667,33 +891,53 @@ class _LabeledPasswordField extends StatelessWidget {
                 validator ??
                 (v) => (v == null || v.isEmpty) ? 'กรุณากรอก $label' : null,
             decoration: InputDecoration(
-              prefixIcon: const Icon(
+              prefixIcon: Icon(
                 Icons.lock_rounded,
-                color: AppTheme.deepPurple,
+                color: AppTheme.deepPurple.withOpacity(0.7),
+                size: 20,
               ),
               hintText: hint,
+              hintStyle: TextStyle(
+                color: Colors.grey.withOpacity(0.4),
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+              ),
               filled: true,
               fillColor: Colors.white,
               contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 14,
+                horizontal: 16,
+                vertical: 16,
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: borderRadius,
-                borderSide: const BorderSide(
-                  color: AppTheme.lavender,
-                  width: 1.2,
+                borderSide: BorderSide(
+                  color: Colors.grey.withOpacity(0.2),
+                  width: 1.0,
                 ),
               ),
               focusedBorder: const OutlineInputBorder(
                 borderRadius: borderRadius,
-                borderSide: BorderSide(color: AppTheme.deepPurple, width: 1.6),
+                borderSide: BorderSide(color: AppTheme.deepPurple, width: 1.5),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: borderRadius,
+                borderSide: BorderSide(
+                  color: Colors.red.withOpacity(0.5),
+                  width: 1.0,
+                ),
+              ),
+              focusedErrorBorder: const OutlineInputBorder(
+                borderRadius: borderRadius,
+                borderSide: BorderSide(color: Colors.red, width: 1.5),
               ),
               suffixIcon: IconButton(
                 onPressed: onToggle,
                 icon: Icon(
-                  obscure ? Icons.visibility : Icons.visibility_off,
-                  color: AppTheme.deepPurple,
+                  obscure
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                  color: AppTheme.deepPurple.withOpacity(0.6),
+                  size: 20,
                 ),
               ),
             ),
@@ -794,5 +1038,30 @@ class _GradientButtonState extends State<_GradientButton>
   void dispose() {
     _pressCtrl.dispose();
     super.dispose();
+  }
+}
+
+/// Phone number formatter to add dashes (097-956-7181)
+class _PhoneNumberFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+
+    if (digits.isEmpty) return newValue.copyWith(text: '');
+
+    final buffer = StringBuffer();
+    for (int i = 0; i < digits.length && i < 10; i++) {
+      if (i == 3 || i == 6) buffer.write('-');
+      buffer.write(digits[i]);
+    }
+
+    final formatted = buffer.toString();
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
   }
 }

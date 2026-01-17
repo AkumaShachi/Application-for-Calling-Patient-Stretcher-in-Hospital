@@ -144,4 +144,161 @@ router.put('/admin/cases/:caseId', async (req, res) => {
     }
 });
 
+// Get all porters with case counts (Admin) - role_id=3 is porter
+router.get('/admin/porters', async (req, res) => {
+    try {
+        const [porters] = await pool.query(`
+            SELECT 
+                u.user_num,
+                u.user_username,
+                u.user_fname,
+                u.user_lname,
+                u.user_phone,
+                u.user_email,
+                u.user_profile_image,
+                r.role_name,
+                (SELECT COUNT(*) FROM recordhistory rh WHERE rh.rhis_assigned_porter = u.user_num) as completed_cases,
+                (SELECT COUNT(*) FROM cases c WHERE c.case_assigned_porter = u.user_num AND c.case_status = 'in_progress') as active_cases
+            FROM users u
+            LEFT JOIN roles r ON u.role_id = r.role_id
+            WHERE u.role_id = 3
+            ORDER BY completed_cases DESC
+        `);
+
+        res.json(porters);
+    } catch (error) {
+        console.error("Error fetching porters:", error);
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
+
+// Get all nurses (Admin) - role_id=2 is nurse
+router.get('/admin/nurses', async (req, res) => {
+    try {
+        const [nurses] = await pool.query(`
+            SELECT 
+                u.user_num,
+                u.user_username,
+                u.user_fname,
+                u.user_lname,
+                u.user_phone,
+                u.user_email,
+                u.user_profile_image,
+                r.role_name,
+                (SELECT COUNT(*) FROM cases c WHERE c.case_requested_by = u.user_num) as created_cases
+            FROM users u
+            LEFT JOIN roles r ON u.role_id = r.role_id
+            WHERE u.role_id = 2
+            ORDER BY created_cases DESC
+        `);
+
+        res.json(nurses);
+    } catch (error) {
+        console.error("Error fetching nurses:", error);
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
+
+// Delete User (Admin)
+router.delete('/admin/users/:userId', async (req, res) => {
+    const { userId } = req.params;
+    const { reason } = req.body;
+
+    console.log(`Admin deleting user ${userId}. Reason: ${reason}`);
+
+    try {
+        // Delete from users table
+        // Note: If foreign keys exist (e.g. cases created by this user), 
+        // this might fail unless ON DELETE CASCADE is set or we handle it.
+        // For now, attempting direct delete.
+        const [result] = await pool.query('DELETE FROM users WHERE user_num = ?', [userId]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.json({ message: 'User deleted successfully' });
+    } catch (error) {
+        console.error("Error deleting user:", error);
+        res.status(500).json({ message: 'Cannot delete user (might be linked to cases)', error: error.message });
+    }
+});
+
+// Get dashboard statistics (Admin)
+router.get('/admin/dashboard/stats', async (req, res) => {
+    try {
+        // Get case counts
+        const [[{ total_cases }]] = await pool.query(`
+            SELECT COUNT(*) as total_cases FROM cases
+        `);
+        const [[{ pending_cases }]] = await pool.query(`
+            SELECT COUNT(*) as pending_cases FROM cases WHERE case_status = 'pending'
+        `);
+        const [[{ in_progress_cases }]] = await pool.query(`
+            SELECT COUNT(*) as in_progress_cases FROM cases WHERE case_status = 'in_progress'
+        `);
+        const [[{ completed_today }]] = await pool.query(`
+            SELECT COUNT(*) as completed_today FROM recordhistory 
+            WHERE DATE(rhis_completed_at) = CURDATE()
+        `);
+        const [[{ completed_total }]] = await pool.query(`
+            SELECT COUNT(*) as completed_total FROM recordhistory
+        `);
+
+        // Get porter counts
+        const [[{ total_porters }]] = await pool.query(`
+            SELECT COUNT(*) as total_porters FROM users WHERE role_id = 3
+        `);
+        const [[{ total_nurses }]] = await pool.query(`
+            SELECT COUNT(*) as total_nurses FROM users WHERE role_id = 2
+        `);
+
+        // Get today's cases
+        const [[{ today_cases }]] = await pool.query(`
+            SELECT COUNT(*) as today_cases FROM cases 
+            WHERE DATE(case_created_at) = CURDATE()
+        `);
+
+        // Get top porters (most completed cases)
+        const [topPorters] = await pool.query(`
+            SELECT 
+                u.user_fname,
+                u.user_lname,
+                COUNT(r.rhis_id) as case_count
+            FROM users u
+            LEFT JOIN recordhistory r ON r.rhis_assigned_porter = u.user_num
+            WHERE u.role_id = 3
+            GROUP BY u.user_num
+            ORDER BY case_count DESC
+            LIMIT 5
+        `);
+
+        // Get ER cases count (emergency)
+        const [[{ er_pending }]] = await pool.query(`
+            SELECT COUNT(*) as er_pending FROM cases 
+            WHERE case_patient_type LIKE 'ER%' AND case_status = 'pending'
+        `);
+
+        res.json({
+            cases: {
+                total: total_cases,
+                pending: pending_cases,
+                in_progress: in_progress_cases,
+                completed_today: completed_today,
+                completed_total: completed_total,
+                today_new: today_cases,
+                er_pending: er_pending
+            },
+            staff: {
+                porters: total_porters,
+                nurses: total_nurses
+            },
+            topPorters: topPorters
+        });
+    } catch (error) {
+        console.error("Error fetching dashboard stats:", error);
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
+
 module.exports = router;

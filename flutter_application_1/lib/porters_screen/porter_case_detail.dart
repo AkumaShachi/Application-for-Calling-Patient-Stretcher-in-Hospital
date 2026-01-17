@@ -36,14 +36,34 @@ class _PorterCaseDetailScreenState extends State<PorterCaseDetailScreen> {
     }
   }
 
-  // Helper to format patient ID without duplicate HN
+  // Helper to format patient ID - return as-is
   String _formatPatientId(String? patientId) {
     if (patientId == null || patientId.isEmpty) return '-';
-    String cleanId = patientId.replaceFirst(
-      RegExp(r'^HN', caseSensitive: false),
-      '',
-    );
-    return cleanId;
+    return patientId;
+  }
+
+  // Helper to extract prefix from patient ID (HN/AN/XN/DN)
+  String _getPatientIdPrefix(String? patientId) {
+    if (patientId == null || patientId.isEmpty) return 'HN';
+    final upper = patientId.toUpperCase();
+    if (upper.startsWith('AN')) return 'AN';
+    if (upper.startsWith('XN')) return 'XN';
+    if (upper.startsWith('DN')) return 'DN';
+    if (upper.startsWith('HN')) return 'HN';
+    return 'HN'; // default
+  }
+
+  // Helper to get patient ID number without prefix
+  String _getPatientIdNumber(String? patientId) {
+    if (patientId == null || patientId.isEmpty) return '-';
+    final upper = patientId.toUpperCase();
+    // Remove known prefixes
+    for (final prefix in ['HN', 'AN', 'XN', 'DN']) {
+      if (upper.startsWith(prefix)) {
+        return patientId.substring(prefix.length);
+      }
+    }
+    return patientId;
   }
 
   @override
@@ -253,9 +273,11 @@ class _PorterCaseDetailScreenState extends State<PorterCaseDetailScreen> {
                                               6,
                                             ),
                                           ),
-                                          child: const Text(
-                                            'HN',
-                                            style: TextStyle(
+                                          child: Text(
+                                            _getPatientIdPrefix(
+                                              item['patient_id']?.toString(),
+                                            ),
+                                            style: const TextStyle(
                                               color: Colors.white,
                                               fontWeight: FontWeight.bold,
                                               fontSize: 12,
@@ -265,7 +287,7 @@ class _PorterCaseDetailScreenState extends State<PorterCaseDetailScreen> {
                                         const SizedBox(width: 8),
                                         Expanded(
                                           child: Text(
-                                            _formatPatientId(
+                                            _getPatientIdNumber(
                                               item['patient_id']?.toString(),
                                             ),
                                             style: const TextStyle(

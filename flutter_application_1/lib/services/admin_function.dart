@@ -81,4 +81,78 @@ class AdminFunction {
       return false;
     }
   }
+
+  // ดึงรายชื่อ Porters ทั้งหมดพร้อมจำนวนเคส
+  static Future<List<Map<String, dynamic>>> fetchPorters() async {
+    final url = Uri.parse('$baseUrl/admin/porters');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.cast<Map<String, dynamic>>();
+      } else {
+        print('Failed to fetch porters: ${response.body}');
+        return [];
+      }
+    } catch (e) {
+      print('Error fetching porters: $e');
+      return [];
+    }
+  }
+
+  // ดึงข้อมูล Dashboard stats
+  static Future<Map<String, dynamic>?> fetchDashboardStats() async {
+    final url = Uri.parse('$baseUrl/admin/dashboard/stats');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        print('Failed to fetch dashboard stats: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Error fetching dashboard stats: $e');
+      return null;
+    }
+  }
+
+  // ดึงรายชื่อ Nurses ทั้งหมด
+  static Future<List<Map<String, dynamic>>> fetchNurses() async {
+    final url = Uri.parse('$baseUrl/admin/nurses');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.cast<Map<String, dynamic>>();
+      } else {
+        print('Failed to fetch nurses: ${response.body}');
+        return [];
+      }
+    } catch (e) {
+      print('Error fetching nurses: $e');
+      return [];
+    }
+  }
+
+  // ลบ User (Porters/Nurses) พร้อมระบุเหตุผล
+  static Future<bool> deleteUser(String userId, String reason) async {
+    final url = Uri.parse('$baseUrl/admin/users/$userId');
+    try {
+      final response = await http.delete(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'reason': reason}),
+      );
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        print('Failed to delete user: ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      print('Error deleting user: $e');
+      return false;
+    }
+  }
 }

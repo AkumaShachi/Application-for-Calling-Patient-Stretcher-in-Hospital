@@ -242,17 +242,12 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                         backgroundColor: Colors.white,
                         backgroundImage: _selectedImage != null
                             ? FileImage(_selectedImage!) as ImageProvider
-                            : (profileImageUrl != null
+                            : (profileImageUrl != null &&
+                                      profileImageUrl!.isNotEmpty
                                   ? NetworkImage(profileImageUrl!)
-                                  : null),
-                        child:
-                            (_selectedImage == null && profileImageUrl == null)
-                            ? Icon(
-                                Icons.person,
-                                size: 55,
-                                color: AppTheme.deepPurple,
-                              )
-                            : null,
+                                  : const AssetImage(
+                                      'assets/default_porter_avatar.png',
+                                    )),
                       ),
                     ),
                     Positioned(
